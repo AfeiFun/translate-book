@@ -532,6 +532,26 @@ chunks rather than `output.md`: whenever a chunk changes, the build re-merges
 Hard-won details from a 325-chunk, 450-page scanned book translated to Chinese.
 None of them are optional on a run of that shape.
 
+**Calibre-made EPUBs with no `<h1>`/`<h2>` tags.** Some EPUBs wrap every heading
+in `<span class="calibreN"><span class="underline">` and rely on `toc.ncx` for
+structure. Feeding them to Calibre HTMLZ + pandoc yields fenced `::: {.calibre}`
+div soup with zero headings. Extract clean Markdown directly from `toc.ncx`
+instead, then pass that `.md` to `convert.py`:
+
+```bash
+python3 {baseDir}/scripts/epub_ncx_to_md.py "<file.epub>" "<stem>.md"
+python3 {baseDir}/scripts/convert.py "<stem>.md" --olang zh
+```
+
+**Curly quotes for CJK outputs.** Sub-agents often emit ASCII straight quotes
+(`"..."`), which Pandoc renders inconsistently in CJK text. Normalize paired
+straight quotes to `“...”` (skipping HTML tags, code blocks, and odd-quote
+lines) before recording and building:
+
+```bash
+python3 {baseDir}/scripts/smartquote.py "<temp_dir>" --apply
+```
+
 **Scanned PDFs with a hidden OCR layer.** Calibre's HTMLZ path keeps the
 full-page scan images and throws the hidden text layer away — a 450-page book
 comes out as ~2,800 characters of text. Check with `pdftotext <file.pdf> - |
