@@ -617,3 +617,12 @@ that do.
 (`pdftoppm -f 40 -l 40 -r 120 -png book.pdf out`) and confirm the folios, the
 running text and the TOC page numbers agree. A TOC that lists page 7 for a
 chapter that starts on 8 looks correct in every log line.
+
+### 11. Translating Text Inside Images
+
+If the book has maps/diagrams with English labels, follow
+`{baseDir}/references/image-translation.md` (scope questions, the JPEG APP14 `0xFFEE`
+pitfall that causes `INVALID_ARGUMENT 400`, local render engine in
+`{baseDir}/scripts/image_translate/`, per-label inpainting rules, verification, and
+dual-directory delivery). Confirm with the user which images to keep as originals
+(cover/title page) before starting.

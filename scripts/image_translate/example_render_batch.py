@@ -1,0 +1,421 @@
+import os
+from render_engine import render_image
+
+CLEAN = os.environ.get("IMG_SCRATCH", ".") + "/clean_images"
+OUT = os.environ.get("IMG_SCRATCH", ".") + "/verified_zh"
+
+# ---------------- Map 8: 000007.jpg ----------------
+def render_000007():
+    items = [
+        {"erase": (0.060, 0.115, 0.110, 0.133), "text": "冰岛", "cx": 0.085, "cy": 0.124, "size": 9, "erase_mode": "dark_text", "thresh": 175},
+        {"erase": (0.310, 0.232, 0.372, 0.258), "text": "挪威", "cx": 0.340, "cy": 0.244, "size": 9.5, "erase_mode": "dark_text", "thresh": 185},
+        {"erase": (0.365, 0.218, 0.425, 0.245), "text": "瑞典", "cx": 0.395, "cy": 0.231, "size": 9.5, "erase_mode": "dark_text", "thresh": 185},
+        {"erase": (0.483, 0.164, 0.542, 0.188), "text": "芬兰", "cx": 0.512, "cy": 0.176, "size": 9.5, "erase_mode": "dark_text", "thresh": 185},
+        {"erase": (0.700, 0.216, 0.752, 0.236), "text": "俄罗斯", "cx": 0.726, "cy": 0.226, "size": 11, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.490, 0.297, 0.548, 0.315), "text": "爱沙尼亚", "cx": 0.519, "cy": 0.306, "size": 8.5, "color": "white", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.498, 0.335, 0.558, 0.363), "text": "拉脱维亚", "cx": 0.530, "cy": 0.348, "size": 8.5, "color": "white", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.483, 0.372, 0.546, 0.390), "text": "立陶宛", "cx": 0.514, "cy": 0.381, "size": 8.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.558, 0.406, 0.610, 0.424), "text": "白俄罗斯", "cx": 0.584, "cy": 0.415, "size": 9, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.302, 0.373, 0.374, 0.396), "text": "丹麦", "cx": 0.338, "cy": 0.384, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 165},
+        {"erase": (0.088, 0.415, 0.150, 0.431), "text": "爱尔兰", "cx": 0.119, "cy": 0.423, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 175},
+        {"erase": (0.154, 0.412, 0.258, 0.436), "text": "英国", "cx": 0.204, "cy": 0.424, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 180},
+        {"erase": (0.246, 0.468, 0.334, 0.494), "text": "荷兰", "cx": 0.285, "cy": 0.481, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 120},
+        {"erase": (0.444, 0.460, 0.495, 0.478), "text": "波兰", "cx": 0.469, "cy": 0.469, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.620, 0.489, 0.675, 0.508), "text": "乌克兰", "cx": 0.647, "cy": 0.498, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.312, 0.493, 0.372, 0.511), "text": "德国", "cx": 0.342, "cy": 0.502, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.243, 0.496, 0.298, 0.515), "text": "比利时", "cx": 0.268, "cy": 0.505, "size": 8.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 135},
+        {"erase": (0.378, 0.520, 0.477, 0.539), "text": "捷克", "cx": 0.424, "cy": 0.529, "size": 8.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.454, 0.535, 0.518, 0.553), "text": "斯洛伐克", "cx": 0.486, "cy": 0.544, "size": 8, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.597, 0.540, 0.648, 0.557), "text": "摩尔多瓦", "cx": 0.622, "cy": 0.549, "size": 8, "color": "white", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.382, 0.567, 0.445, 0.589), "text": "奥地利", "cx": 0.413, "cy": 0.578, "size": 8.5, "halo": False, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.447, 0.571, 0.510, 0.594), "text": "匈牙利", "cx": 0.479, "cy": 0.583, "size": 8.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.211, 0.581, 0.258, 0.598), "text": "法国", "cx": 0.234, "cy": 0.589, "size": 9.5, "erase_mode": "dark_text", "thresh": 185},
+        {"erase": (0.540, 0.587, 0.598, 0.607), "text": "罗马尼亚", "cx": 0.569, "cy": 0.597, "size": 8.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.284, 0.589, 0.360, 0.607), "text": "瑞士", "cx": 0.322, "cy": 0.598, "size": 8.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.371, 0.600, 0.420, 0.618), "text": "斯洛文尼亚", "cx": 0.392, "cy": 0.611, "size": 7.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 140},
+        {"erase": (0.416, 0.610, 0.472, 0.628), "text": "克罗地亚", "cx": 0.445, "cy": 0.620, "size": 8, "color": "white", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.455, 0.638, 0.598, 0.656), "extra_erase": [(0.515, 0.656, 0.606, 0.673)], "text": "塞尔维亚和黑山", "cx": 0.525, "cy": 0.648, "size": 8, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.559, 0.655, 0.620, 0.676), "text": "保加利亚", "cx": 0.589, "cy": 0.665, "size": 8.5, "color": "white", "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.406, 0.650, 0.496, 0.686), "text": "波黑", "cx": 0.446, "cy": 0.671, "size": 8.5, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.363, 0.675, 0.403, 0.698), "text": "意大利", "cx": 0.383, "cy": 0.686, "size": 9, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.178, 0.679, 0.235, 0.697), "text": "安道尔", "cx": 0.207, "cy": 0.688, "size": 8.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.504, 0.691, 0.574, 0.709), "text": "马其顿", "cx": 0.539, "cy": 0.700, "size": 8, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.460, 0.706, 0.515, 0.722), "text": "阿尔巴尼亚", "cx": 0.488, "cy": 0.715, "size": 7.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.010, 0.710, 0.066, 0.730), "text": "葡萄牙", "cx": 0.038, "cy": 0.720, "size": 8.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 165},
+        {"erase": (0.095, 0.725, 0.135, 0.744), "text": "西班牙", "cx": 0.115, "cy": 0.734, "size": 9.5, "erase_mode": "dark_text", "thresh": 185},
+        {"erase": (0.505, 0.738, 0.582, 0.765), "text": "希腊", "cx": 0.543, "cy": 0.751, "size": 9, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.035, 0.805, 0.095, 0.824), "text": "直布罗陀", "cx": 0.065, "cy": 0.815, "size": 8.5, "erase_mode": "dark_text"},
+        {"erase": (0.407, 0.841, 0.448, 0.859), "text": "马耳他", "cx": 0.427, "cy": 0.850, "size": 8.5, "erase_mode": "dark_text"},
+        {"erase": (0.785, 0.720, 0.990, 0.758), "text": "1800 年农奴制", "cx": 0.885, "cy": 0.738, "size": 12, "font": "heiti", "erase_mode": "white"},
+        {"erase": (0.870, 0.770, 0.930, 0.802), "text": "无", "cx": 0.895, "cy": 0.785, "size": 12, "erase_mode": "white"},
+        {"erase": (0.870, 0.818, 0.930, 0.852), "text": "有", "cx": 0.895, "cy": 0.834, "size": 12, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000007.jpg", f"{OUT}/000007.jpg", items, caption="地图 8：1800 年欧洲农奴制分布", caption_y0=0.968)
+
+# ---------------- Map 9: 000008.jpg ----------------
+def render_000008():
+    items = [
+        {"erase": (0.576, 0.274, 0.664, 0.293), "text": "爱尔兰", "cx": 0.620, "cy": 0.283, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.813, 0.288, 0.867, 0.304), "text": "利兹", "x": 0.814, "cy": 0.295, "anchor": "lm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.700, 0.298, 0.782, 0.314), "text": "曼彻斯特", "x": 0.780, "cy": 0.306, "anchor": "rm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.812, 0.305, 0.884, 0.321), "text": "谢菲尔德", "x": 0.813, "cy": 0.313, "anchor": "lm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.708, 0.331, 0.905, 0.354), "text": "英国", "cx": 0.805, "cy": 0.342, "size": 10.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.900, 0.347, 0.999, 0.366), "text": "伯明翰", "x": 0.903, "cy": 0.356, "anchor": "lm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.704, 0.371, 0.818, 0.391), "text": "温莎城堡", "x": 0.817, "cy": 0.381, "anchor": "rm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.824, 0.375, 0.918, 0.395), "text": "兰尼米德", "x": 0.825, "cy": 0.385, "anchor": "lm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.720, 0.402, 0.791, 0.422), "text": "布里克瑟姆", "x": 0.722, "cy": 0.412, "anchor": "lm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.902, 0.403, 0.996, 0.426), "text": "比利时", "cx": 0.948, "cy": 0.414, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.070, 0.514, 0.258, 0.544), "text": "大西洋", "cx": 0.163, "cy": 0.529, "size": 12, "erase_mode": "white"},
+        {"erase": (0.844, 0.545, 0.926, 0.570), "text": "法国", "cx": 0.884, "cy": 0.557, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.785, 0.686, 0.890, 0.713), "text": "安道尔", "cx": 0.836, "cy": 0.699, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.393, 0.735, 0.494, 0.761), "text": "葡萄牙", "cx": 0.443, "cy": 0.748, "size": 10, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.590, 0.750, 0.665, 0.782), "text": "西班牙", "cx": 0.627, "cy": 0.766, "size": 11, "erase_mode": "white"},
+        {"erase": (0.446, 0.876, 0.560, 0.901), "text": "直布罗陀", "cx": 0.503, "cy": 0.888, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.090, 0.806, 0.240, 0.833), "text": "无敌舰队航线", "x": 0.095, "cy": 0.820, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.090, 0.834, 0.215, 0.860), "text": "沉船地点", "x": 0.095, "cy": 0.847, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.090, 0.864, 0.285, 0.889), "text": "现代国界", "x": 0.095, "cy": 0.876, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000008.jpg", f"{OUT}/000008.jpg", items, caption="地图 9：西班牙无敌舰队、沉船与造就关键转折的要地", caption_y0=0.928)
+
+# ---------------- Map 10: 000009.jpg ----------------
+def render_000009():
+    nodes = [
+        (0.578, 0.004, 0.682, 0.040, "卡拉克穆尔"),
+        (0.708, 0.075, 0.802, 0.111, "马萨尔"),
+        (0.822, 0.062, 0.962, 0.105, "洛斯阿拉\n克拉内斯"),
+        (0.112, 0.088, 0.190, 0.124, "莫拉尔"),
+        (0.234, 0.153, 0.328, 0.189, "波莫马"),
+        (0.788, 0.199, 0.872, 0.235, "舒尔通"),
+        (0.105, 0.221, 0.201, 0.257, "帕伦克"),
+        (0.246, 0.290, 0.406, 0.326, "彼德拉斯\n内格拉斯"),
+        (0.464, 0.293, 0.552, 0.329, "埃尔佩鲁"),
+        (0.671, 0.289, 0.743, 0.325, "蒂卡尔"),
+        (0.793, 0.286, 0.889, 0.322, "纳兰霍"),
+        (0.004, 0.317, 0.068, 0.353, "佩莫伊"),
+        (0.608, 0.369, 0.756, 0.409, "莫图尔/\n贝胡卡"),
+        (0.774, 0.369, 0.852, 0.405, "亚克萨"),
+        (0.900, 0.379, 0.992, 0.415, "卡拉科尔"),
+        (0.086, 0.413, 0.168, 0.449, "托尼纳"),
+        (0.214, 0.406, 0.310, 0.442, "萨克齐"),
+        (0.354, 0.410, 0.462, 0.446, "亚克斯奇兰"),
+        (0.498, 0.421, 0.608, 0.457, "多斯皮拉斯"),
+        (0.635, 0.449, 0.719, 0.485, "塞巴尔"),
+        (0.813, 0.496, 0.897, 0.532, "乌卡纳尔"),
+        (0.264, 0.540, 0.376, 0.576, "博南帕克"),
+        (0.942, 0.570, 0.998, 0.606, "萨库尔"),
+        (0.822, 0.582, 0.898, 0.618, "伊什昆"),
+        (0.548, 0.658, 0.808, 0.702, "塔马林迪托/\n阿罗约"),
+        (0.194, 0.689, 0.288, 0.725, "瓦鸟城"),
+        (0.352, 0.683, 0.480, 0.719, "拉卡姆通"),
+        (0.712, 0.694, 0.832, 0.730, "马查基拉"),
+        (0.526, 0.700, 0.620, 0.736, "坎昆"),
+        (0.870, 0.741, 0.966, 0.777, "基里瓜"),
+        (0.818, 0.864, 0.902, 0.900, "科潘"),
+    ]
+    items = []
+    for x0, y0, x1, y1, txt in nodes:
+        items.append({
+            "erase": (x0 + 0.007, y0 + 0.005, x1 - 0.007, y1 - 0.005),
+            "text": txt,
+            "cx": (x0 + x1) / 2,
+            "cy": (y0 + y1) / 2,
+            "size": 7.5 if "\n" in txt or len(txt) >= 5 else 8.5,
+            "halo": True,
+            "halo_width": 1,
+            "erase_mode": "dark_text",
+        })
+    items += [
+        {"erase": (0.109, 0.790, 0.345, 0.818), "text": "明确记述的等级关系", "x": 0.114, "cy": 0.804, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.109, 0.826, 0.270, 0.854), "text": "外交往来", "x": 0.114, "cy": 0.840, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.109, 0.862, 0.198, 0.892), "text": "军事冲突", "x": 0.114, "cy": 0.877, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000009.jpg", f"{OUT}/000009.jpg", items, caption="地图 10：玛雅城邦及其城邦间的往来与冲突", caption_y0=0.962)
+
+# ---------------- Map 11: 000010_upright.jpg -> 000010.jpg ----------------
+def render_000010():
+    items = [
+        {"erase": (0.160, 0.185, 0.292, 0.212), "text": "文多兰达", "cx": 0.226, "cy": 0.198, "size": 10.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.146, 0.244, 0.234, 0.291), "text": "英国", "cx": 0.190, "cy": 0.267, "size": 10.5, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.768, 0.173, 0.826, 0.198), "text": "俄罗斯", "cx": 0.797, "cy": 0.185, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.336, 0.266, 0.417, 0.295), "text": "德国", "cx": 0.376, "cy": 0.280, "size": 10.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.402, 0.355, 0.466, 0.379), "text": "奥地利", "cx": 0.434, "cy": 0.367, "size": 9.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.215, 0.380, 0.274, 0.403), "text": "法国", "cx": 0.244, "cy": 0.391, "size": 10.5, "color": "black", "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.565, 0.394, 0.642, 0.418), "text": "罗马尼亚", "cx": 0.603, "cy": 0.406, "size": 10, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.341, 0.402, 0.435, 0.425), "text": "卢比孔河", "cx": 0.388, "cy": 0.414, "size": 9.5, "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.569, 0.450, 0.643, 0.479), "text": "保加利亚", "cx": 0.606, "cy": 0.464, "size": 9.5, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.393, 0.460, 0.437, 0.486), "text": "意大利", "cx": 0.415, "cy": 0.473, "size": 10, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.132, 0.483, 0.194, 0.517), "text": "西班牙", "cx": 0.163, "cy": 0.500, "size": 10.5, "color": "black", "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.515, 0.512, 0.576, 0.535), "text": "希腊", "cx": 0.545, "cy": 0.523, "size": 10, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.736, 0.526, 0.803, 0.560), "text": "土耳其", "cx": 0.769, "cy": 0.543, "size": 10.5, "color": "black", "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.790, 0.598, 0.840, 0.621), "text": "叙利亚", "cx": 0.815, "cy": 0.609, "size": 9.5, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.828, 0.637, 0.870, 0.663), "text": "伊拉克", "cx": 0.849, "cy": 0.650, "size": 9.5, "color": "black", "halo": True, "halo_width": 1, "erase_mode": "dark_text", "thresh": 125},
+        {"erase": (0.072, 0.644, 0.146, 0.671), "text": "摩洛哥", "cx": 0.109, "cy": 0.657, "size": 10, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.210, 0.726, 0.275, 0.755), "text": "阿尔及利亚", "cx": 0.242, "cy": 0.740, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.437, 0.748, 0.490, 0.778), "text": "利比亚", "cx": 0.463, "cy": 0.763, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.626, 0.808, 0.682, 0.838), "text": "埃及", "cx": 0.654, "cy": 0.823, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.783, 0.835, 0.996, 0.869), "text": "公元 117 年罗马帝国疆域", "x": 0.786, "cy": 0.852, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.783, 0.871, 0.870, 0.903), "text": "卢比孔河", "x": 0.786, "cy": 0.887, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.783, 0.908, 0.966, 0.936), "text": "现代国界", "x": 0.786, "cy": 0.922, "anchor": "lm", "size": 10, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000010_upright.jpg", f"{OUT}/000010.jpg", items, caption="地图 11：公元 117 年的罗马帝国", caption_y0=0.966)
+
+# ---------------- Map 12: 000011.jpg ----------------
+def render_000011():
+    items = [
+        {"erase": (0.410, 0.032, 0.595, 0.058), "text": "沙特阿拉伯", "cx": 0.502, "cy": 0.045, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.894, 0.059, 0.992, 0.087), "text": "阿曼", "cx": 0.943, "cy": 0.073, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.189, 0.072, 0.291, 0.098), "text": "红海", "cx": 0.240, "cy": 0.085, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.005, 0.082, 0.101, 0.110), "text": "苏丹", "cx": 0.053, "cy": 0.096, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.659, 0.088, 0.763, 0.120), "text": "也门", "cx": 0.711, "cy": 0.104, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.093, 0.118, 0.191, 0.142), "text": "厄立特里亚", "cx": 0.142, "cy": 0.130, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 140},
+        {"erase": (0.168, 0.197, 0.250, 0.219), "text": "阿克苏姆", "cx": 0.209, "cy": 0.208, "size": 9, "color": "white", "erase_mode": "light_text"},
+        {"erase": (0.311, 0.290, 0.427, 0.320), "text": "吉布提", "cx": 0.369, "cy": 0.305, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 170},
+        {"erase": (0.359, 0.331, 0.411, 0.356), "text": "迪尔", "cx": 0.385, "cy": 0.344, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.574, 0.363, 0.627, 0.386), "text": "伊萨克", "cx": 0.600, "cy": 0.374, "size": 9, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.549, 0.383, 0.667, 0.407), "text": "索马里", "cx": 0.608, "cy": 0.395, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.169, 0.389, 0.315, 0.415), "text": "亚的斯亚贝巴", "cx": 0.242, "cy": 0.402, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.157, 0.414, 0.286, 0.449), "text": "埃塞俄比亚", "cx": 0.221, "cy": 0.431, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.415, 0.578, 0.573, 0.603), "text": "拉汉温", "cx": 0.494, "cy": 0.590, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.569, 0.570, 0.681, 0.596), "text": "哈维耶", "cx": 0.625, "cy": 0.583, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.751, 0.574, 0.923, 0.604), "text": "印度洋", "cx": 0.837, "cy": 0.589, "size": 11, "erase_mode": "white"},
+        {"erase": (0.273, 0.642, 0.377, 0.670), "text": "哈维耶", "cx": 0.325, "cy": 0.656, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.391, 0.645, 0.471, 0.676), "text": "迪吉尔", "cx": 0.431, "cy": 0.660, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.513, 0.650, 0.558, 0.682), "extra_erase": [(0.558, 0.650, 0.645, 0.682)], "text": "摩加迪沙", "cx": 0.579, "cy": 0.666, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 185},
+        {"erase": (0.255, 0.702, 0.333, 0.731), "text": "达罗德", "cx": 0.294, "cy": 0.716, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.097, 0.725, 0.193, 0.757), "text": "肯尼亚", "cx": 0.145, "cy": 0.741, "size": 10.5, "erase_mode": "dark_text", "thresh": 180},
+        {"erase": (0.003, 0.897, 0.137, 0.925), "text": "坦桑尼亚", "cx": 0.070, "cy": 0.911, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.713, 0.801, 0.824, 0.828), "text": "阿克苏姆", "x": 0.716, "cy": 0.814, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.713, 0.837, 0.968, 0.867), "text": "阿克苏姆外围区", "x": 0.716, "cy": 0.852, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.711, 0.872, 0.990, 0.898), "text": "索马里族群分布区", "x": 0.716, "cy": 0.885, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.713, 0.908, 0.990, 0.935), "text": "现代国界", "x": 0.716, "cy": 0.921, "anchor": "lm", "size": 10, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000011.jpg", f"{OUT}/000011.jpg", items, caption="地图 12：阿克苏姆帝国与索马里氏族分布", caption_y0=0.968)
+
+# ---------------- Map 13: 000012.jpg ----------------
+def render_000012():
+    items = [
+        {"erase": (0.719, 0.100, 0.797, 0.127), "text": "芬兰", "cx": 0.758, "cy": 0.113, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 215},
+        {"erase": (0.493, 0.102, 0.574, 0.130), "text": "瑞典", "cx": 0.533, "cy": 0.116, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 215},
+        {"erase": (0.388, 0.120, 0.472, 0.154), "text": "挪威", "cx": 0.430, "cy": 0.137, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 215},
+        {"erase": (0.153, 0.338, 0.302, 0.370), "text": "英国", "cx": 0.227, "cy": 0.354, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 205},
+        {"erase": (0.298, 0.333, 0.416, 0.364), "text": "荷兰", "cx": 0.357, "cy": 0.348, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 205},
+        {"erase": (0.703, 0.335, 0.772, 0.364), "text": "俄国", "cx": 0.737, "cy": 0.349, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 215},
+        {"erase": (0.442, 0.342, 0.586, 0.371), "text": "德意志", "cx": 0.514, "cy": 0.356, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 205},
+        {"erase": (0.303, 0.388, 0.388, 0.420), "text": "比利时", "cx": 0.345, "cy": 0.404, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 205},
+        {"erase": (0.485, 0.464, 0.736, 0.499), "text": "奥匈帝国", "cx": 0.610, "cy": 0.481, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 210},
+        {"erase": (0.243, 0.478, 0.313, 0.507), "text": "法国", "cx": 0.278, "cy": 0.492, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 205},
+        {"erase": (0.411, 0.519, 0.461, 0.551), "text": "意大利", "cx": 0.436, "cy": 0.535, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 205},
+        {"erase": (0.702, 0.525, 0.790, 0.552), "text": "罗马尼亚", "cx": 0.746, "cy": 0.538, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 210},
+        {"erase": (0.612, 0.538, 0.680, 0.568), "text": "塞尔维亚", "cx": 0.646, "cy": 0.553, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 210},
+        {"erase": (0.696, 0.564, 0.781, 0.600), "text": "保加利亚", "cx": 0.738, "cy": 0.582, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 210},
+        {"erase": (0.616, 0.602, 0.778, 0.637), "text": "奥斯曼帝国", "cx": 0.697, "cy": 0.619, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 215},
+        {"erase": (0.031, 0.621, 0.120, 0.658), "text": "葡萄牙", "cx": 0.075, "cy": 0.639, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 210},
+        {"erase": (0.141, 0.640, 0.204, 0.675), "text": "西班牙", "cx": 0.172, "cy": 0.657, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 210},
+        {"erase": (0.062, 0.812, 0.215, 0.842), "text": "1870 年铁路网", "x": 0.067, "cy": 0.827, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.062, 0.851, 0.242, 0.881), "text": "1870 年国界", "x": 0.067, "cy": 0.866, "anchor": "lm", "size": 10, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000012.jpg", f"{OUT}/000012.jpg", items, caption="地图 13：1870 年欧洲的铁路网", caption_y0=0.964)
+
+# ---------------- Map 14: 000013.jpg ----------------
+def render_000013():
+    items = [
+        {"erase": (0.738, 0.005, 0.800, 0.035), "text": "日本", "cx": 0.769, "cy": 0.020, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.058, 0.021, 0.115, 0.048), "text": "印度", "cx": 0.086, "cy": 0.034, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.346, 0.038, 0.409, 0.064), "text": "中国", "cx": 0.377, "cy": 0.051, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.594, 0.053, 0.671, 0.080), "text": "台湾", "cx": 0.632, "cy": 0.066, "size": 10, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.141, 0.098, 0.172, 0.120), "text": "阿瓦", "x": 0.143, "cy": 0.109, "anchor": "lm", "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.092, 0.126, 0.188, 0.157), "text": "缅甸", "cx": 0.140, "cy": 0.141, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.242, 0.150, 0.294, 0.181), "text": "老挝", "cx": 0.268, "cy": 0.165, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.124, 0.186, 0.170, 0.209), "text": "勃固", "cx": 0.147, "cy": 0.197, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.589, 0.211, 0.700, 0.242), "text": "菲律宾", "cx": 0.644, "cy": 0.226, "size": 10, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.618, 0.242, 0.676, 0.266), "text": "吕宋", "cx": 0.647, "cy": 0.254, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.211, 0.251, 0.301, 0.278), "text": "泰国", "cx": 0.256, "cy": 0.264, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.638, 0.268, 0.688, 0.290), "text": "马尼拉", "x": 0.640, "cy": 0.279, "anchor": "lm", "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.266, 0.298, 0.370, 0.325), "text": "柬埔寨", "cx": 0.318, "cy": 0.311, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.644, 0.324, 0.732, 0.354), "text": "米沙鄢", "cx": 0.688, "cy": 0.339, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.318, 0.350, 0.403, 0.376), "text": "越南", "cx": 0.360, "cy": 0.363, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.692, 0.353, 0.736, 0.372), "text": "宿务", "cx": 0.714, "cy": 0.362, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.623, 0.406, 0.725, 0.431), "text": "马京达瑙", "cx": 0.674, "cy": 0.418, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.720, 0.422, 0.800, 0.449), "text": "棉兰老", "x": 0.722, "cy": 0.435, "anchor": "lm", "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.633, 0.451, 0.673, 0.472), "text": "苏禄", "cx": 0.653, "cy": 0.461, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.123, 0.462, 0.165, 0.484), "text": "亚齐", "cx": 0.144, "cy": 0.473, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.473, 0.500, 0.540, 0.524), "text": "文莱", "cx": 0.506, "cy": 0.512, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.268, 0.508, 0.415, 0.544), "text": "马来半岛", "cx": 0.339, "cy": 0.526, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.212, 0.540, 0.278, 0.560), "text": "马六甲", "cx": 0.245, "cy": 0.550, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.242, 0.573, 0.342, 0.602), "text": "新加坡", "cx": 0.292, "cy": 0.587, "size": 10, "font": "songti_bold", "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.712, 0.576, 0.786, 0.594), "text": "特尔纳特", "cx": 0.748, "cy": 0.585, "size": 8, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.766, 0.590, 0.822, 0.614), "text": "蒂多雷", "x": 0.767, "cy": 0.602, "anchor": "lm", "size": 8, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.447, 0.645, 0.512, 0.668), "text": "婆罗洲", "cx": 0.479, "cy": 0.656, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.594, 0.646, 0.676, 0.671), "text": "苏拉威西", "cx": 0.635, "cy": 0.658, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.714, 0.652, 0.790, 0.683), "text": "马鲁古", "cx": 0.752, "cy": 0.667, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.305, 0.658, 0.395, 0.682), "text": "巨港", "cx": 0.350, "cy": 0.670, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.506, 0.667, 0.598, 0.687), "text": "马辰", "cx": 0.552, "cy": 0.677, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.718, 0.682, 0.832, 0.717), "text": "安汶", "cx": 0.775, "cy": 0.700, "size": 10.5, "font": "songti_bold", "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.268, 0.700, 0.348, 0.725), "text": "苏门答腊", "cx": 0.308, "cy": 0.712, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.792, 0.714, 0.868, 0.745), "text": "班达", "cx": 0.830, "cy": 0.729, "size": 10.5, "font": "songti_bold", "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.328, 0.735, 0.401, 0.755), "text": "雅加达", "cx": 0.365, "cy": 0.745, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.468, 0.756, 0.542, 0.779), "text": "泗水", "cx": 0.505, "cy": 0.768, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.298, 0.768, 0.350, 0.793), "text": "万丹", "cx": 0.324, "cy": 0.781, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.354, 0.768, 0.398, 0.793), "text": "爪哇", "cx": 0.376, "cy": 0.781, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.496, 0.786, 0.540, 0.810), "text": "巴厘岛", "cx": 0.518, "cy": 0.798, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.667, 0.804, 0.786, 0.835), "text": "东帝汶", "cx": 0.726, "cy": 0.819, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.498, 0.822, 0.550, 0.845), "text": "图班", "cx": 0.524, "cy": 0.833, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.592, 0.853, 0.680, 0.884), "text": "龙目岛", "cx": 0.636, "cy": 0.868, "size": 9, "halo": True, "erase_mode": "dark_text"},
+    ]
+    render_image(f"{CLEAN}/000013.jpg", f"{OUT}/000013.jpg", items, caption="地图 14：1600 年的东南亚、香料群岛、安汶与班达", caption_y0=0.962)
+
+# ---------------- Map 15: 000014.jpg ----------------
+def render_000014():
+    items = [
+        {"erase": (0.107, 0.031, 0.196, 0.054), "text": "摩洛哥", "cx": 0.151, "cy": 0.042, "size": 10, "erase_mode": "white"},
+        {"erase": (0.411, 0.026, 0.490, 0.054), "text": "突尼斯", "cx": 0.450, "cy": 0.040, "size": 10, "erase_mode": "white"},
+        {"erase": (0.262, 0.114, 0.340, 0.143), "text": "阿尔及利亚", "cx": 0.301, "cy": 0.128, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.492, 0.134, 0.558, 0.160), "text": "利比亚", "cx": 0.525, "cy": 0.147, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.655, 0.136, 0.722, 0.165), "text": "埃及", "cx": 0.688, "cy": 0.150, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.056, 0.163, 0.217, 0.190), "text": "西撒哈拉", "cx": 0.140, "cy": 0.176, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.079, 0.216, 0.192, 0.240), "text": "毛里塔尼亚", "cx": 0.135, "cy": 0.228, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.252, 0.252, 0.305, 0.278), "text": "马里", "cx": 0.278, "cy": 0.265, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.386, 0.250, 0.452, 0.282), "text": "尼日尔", "cx": 0.419, "cy": 0.266, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.512, 0.278, 0.577, 0.302), "text": "乍得", "cx": 0.544, "cy": 0.290, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.652, 0.296, 0.727, 0.322), "text": "苏丹", "cx": 0.689, "cy": 0.309, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.786, 0.267, 0.866, 0.291), "text": "厄立特里亚", "cx": 0.826, "cy": 0.279, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.045, 0.292, 0.130, 0.320), "text": "塞内加尔", "cx": 0.087, "cy": 0.306, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.005, 0.329, 0.095, 0.354), "text": "冈比亚", "cx": 0.050, "cy": 0.341, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.100, 0.334, 0.177, 0.356), "text": "几内亚", "cx": 0.138, "cy": 0.345, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.198, 0.315, 0.339, 0.341), "text": "布基纳法索", "cx": 0.268, "cy": 0.328, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 140},
+        {"erase": (0.032, 0.364, 0.156, 0.388), "text": "塞拉利昂", "cx": 0.088, "cy": 0.376, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.118, 0.396, 0.192, 0.423), "text": "利比里亚", "cx": 0.155, "cy": 0.410, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.155, 0.374, 0.262, 0.398), "text": "科特迪瓦", "cx": 0.205, "cy": 0.386, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.248, 0.353, 0.312, 0.376), "text": "加纳", "cx": 0.280, "cy": 0.364, "size": 8.5, "color": "white", "erase_mode": "light_text"},
+        {"erase": (0.298, 0.340, 0.356, 0.365), "text": "多哥", "cx": 0.325, "cy": 0.353, "size": 8, "color": "white", "halo": True, "halo_width": 1, "erase_mode": "light_text"},
+        {"erase": (0.278, 0.383, 0.339, 0.404), "text": "贝宁", "cx": 0.308, "cy": 0.393, "size": 8, "color": "white", "halo": True, "halo_width": 1, "erase_mode": "light_text"},
+        {"erase": (0.355, 0.349, 0.440, 0.378), "text": "尼日利亚", "cx": 0.398, "cy": 0.363, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.812, 0.322, 0.900, 0.358), "text": "吉布提", "cx": 0.856, "cy": 0.340, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.772, 0.362, 0.860, 0.390), "text": "埃塞俄比亚", "cx": 0.816, "cy": 0.376, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.888, 0.351, 0.970, 0.374), "text": "索马里", "cx": 0.929, "cy": 0.362, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.500, 0.371, 0.654, 0.429), "text": "中非\n共和国", "cx": 0.577, "cy": 0.398, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.397, 0.403, 0.498, 0.424), "text": "喀麦隆", "cx": 0.447, "cy": 0.413, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.335, 0.452, 0.518, 0.479), "text": "赤道几内亚", "cx": 0.429, "cy": 0.465, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 215},
+        {"erase": (0.402, 0.480, 0.490, 0.504), "text": "加蓬", "cx": 0.446, "cy": 0.492, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 155},
+        {"erase": (0.328, 0.503, 0.512, 0.530), "text": "刚果(布)", "cx": 0.422, "cy": 0.516, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 215},
+        {"erase": (0.532, 0.478, 0.658, 0.553), "text": "刚果\n民主共和国", "cx": 0.595, "cy": 0.515, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.713, 0.450, 0.790, 0.472), "text": "乌干达", "cx": 0.751, "cy": 0.461, "size": 9, "erase_mode": "dark_text"},
+        {"erase": (0.769, 0.472, 0.836, 0.498), "text": "肯尼亚", "cx": 0.802, "cy": 0.485, "size": 9, "erase_mode": "dark_text"},
+        {"erase": (0.655, 0.490, 0.739, 0.514), "text": "卢旺达", "cx": 0.697, "cy": 0.502, "size": 8, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.655, 0.514, 0.741, 0.538), "text": "布隆迪", "cx": 0.698, "cy": 0.526, "size": 8, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.711, 0.555, 0.805, 0.577), "text": "坦桑尼亚", "cx": 0.758, "cy": 0.566, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.500, 0.632, 0.583, 0.657), "text": "安哥拉", "cx": 0.541, "cy": 0.644, "size": 9.5, "color": "white", "erase_mode": "light_text"},
+        {"erase": (0.703, 0.638, 0.789, 0.665), "text": "马拉维", "cx": 0.746, "cy": 0.651, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.602, 0.657, 0.684, 0.681), "text": "赞比亚", "cx": 0.643, "cy": 0.669, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.706, 0.697, 0.838, 0.723), "text": "莫桑比克", "cx": 0.772, "cy": 0.710, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.866, 0.719, 0.986, 0.745), "text": "马达加斯加", "cx": 0.926, "cy": 0.732, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.633, 0.719, 0.742, 0.745), "text": "津巴布韦", "cx": 0.687, "cy": 0.732, "size": 9, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.475, 0.735, 0.571, 0.762), "text": "纳米比亚", "cx": 0.523, "cy": 0.748, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.572, 0.755, 0.670, 0.777), "text": "博茨瓦纳", "cx": 0.621, "cy": 0.766, "size": 9, "erase_mode": "white"},
+        {"erase": (0.663, 0.808, 0.769, 0.834), "text": "斯威士兰", "cx": 0.716, "cy": 0.821, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.528, 0.856, 0.653, 0.878), "text": "南非", "cx": 0.590, "cy": 0.867, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.653, 0.850, 0.727, 0.871), "text": "莱索托", "cx": 0.690, "cy": 0.861, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.044, 0.674, 0.356, 0.738), "text": "1400 年奴隶出口\n占人口百分比", "cx": 0.195, "cy": 0.705, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.149, 0.907, 0.322, 0.945), "text": "数据缺失", "x": 0.153, "cy": 0.925, "anchor": "lm", "size": 11.5, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000014.jpg", f"{OUT}/000014.jpg", items, caption="地图 15：非洲的奴隶出口", caption_y0=0.968)
+
+# ---------------- Map 16: 000015.jpg ----------------
+def render_000015():
+    items = [
+        {"erase": (0.749, 0.024, 0.833, 0.051), "text": "马拉维", "cx": 0.791, "cy": 0.037, "size": 10.5, "erase_mode": "dark_text"},
+        {"erase": (0.441, 0.048, 0.527, 0.080), "text": "赞比亚", "cx": 0.484, "cy": 0.064, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.807, 0.056, 0.950, 0.086), "text": "莫桑比克", "cx": 0.878, "cy": 0.071, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.585, 0.140, 0.650, 0.165), "text": "哈拉雷", "x": 0.648, "cy": 0.152, "anchor": "rm", "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.544, 0.178, 0.665, 0.208), "text": "津巴布韦", "cx": 0.604, "cy": 0.193, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.399, 0.293, 0.506, 0.324), "text": "博茨瓦纳", "cx": 0.452, "cy": 0.308, "size": 10.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.172, 0.316, 0.265, 0.343), "text": "纳米比亚", "cx": 0.218, "cy": 0.329, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.400, 0.384, 0.487, 0.408), "text": "哈博罗内", "x": 0.486, "cy": 0.396, "anchor": "rm", "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.428, 0.436, 0.554, 0.465), "text": "约翰内斯堡", "x": 0.553, "cy": 0.451, "anchor": "rm", "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.613, 0.449, 0.727, 0.477), "text": "斯威士兰", "cx": 0.670, "cy": 0.463, "size": 10, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.354, 0.526, 0.450, 0.556), "text": "金伯利", "x": 0.449, "cy": 0.541, "anchor": "rm", "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.268, 0.556, 0.405, 0.587), "text": "南非", "cx": 0.336, "cy": 0.571, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.023, 0.579, 0.165, 0.609), "text": "大西洋", "cx": 0.094, "cy": 0.594, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.458, 0.545, 0.565, 0.575), "text": "格里夸兰", "cx": 0.511, "cy": 0.560, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.565, 0.560, 0.650, 0.588), "text": "莱索托", "cx": 0.607, "cy": 0.574, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.500, 0.626, 0.579, 0.654), "text": "特兰斯凯", "x": 0.577, "cy": 0.640, "anchor": "rm", "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.478, 0.675, 0.533, 0.699), "text": "西斯凯", "x": 0.532, "cy": 0.687, "anchor": "rm", "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 110},
+        {"erase": (0.543, 0.695, 0.640, 0.722), "text": "芬戈兰", "x": 0.546, "cy": 0.708, "anchor": "lm", "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.142, 0.710, 0.249, 0.742), "text": "开普敦", "x": 0.247, "cy": 0.726, "anchor": "rm", "size": 9.5, "halo": True, "erase_mode": "white"},
+        {"erase": (0.736, 0.728, 0.975, 0.760), "text": "1913 与 1936 年《土地法》", "x": 0.740, "cy": 0.744, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.738, 0.766, 0.990, 0.798), "text": "1970 年土地分配", "x": 0.740, "cy": 0.782, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.738, 0.801, 0.935, 0.832), "text": "现代国界", "x": 0.740, "cy": 0.816, "anchor": "lm", "size": 10, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000015.jpg", f"{OUT}/000015.jpg", items, caption="地图 16：南非与津巴布韦白人少数政权\n分配给非洲人的土地", caption_y0=0.905)
+
+# ---------------- Map 17: 000016.jpg ----------------
+def render_000016():
+    items = [
+        {"erase": (0.523, 0.026, 0.608, 0.062), "text": "挪威", "cx": 0.565, "cy": 0.044, "size": 10.5, "erase_mode": "dark_text"},
+        {"erase": (0.672, 0.062, 0.753, 0.091), "text": "瑞典", "cx": 0.712, "cy": 0.076, "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.916, 0.120, 0.996, 0.145), "text": "拉脱维亚", "cx": 0.956, "cy": 0.132, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.542, 0.142, 0.635, 0.174), "text": "丹麦", "cx": 0.588, "cy": 0.158, "size": 10, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.908, 0.156, 0.998, 0.184), "text": "立陶宛", "cx": 0.953, "cy": 0.170, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.214, 0.208, 0.382, 0.242), "text": "英国", "cx": 0.298, "cy": 0.225, "size": 10.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.096, 0.234, 0.179, 0.262), "text": "爱尔兰", "cx": 0.137, "cy": 0.248, "size": 10, "erase_mode": "white"},
+        {"erase": (0.696, 0.242, 0.744, 0.264), "text": "柏林", "cx": 0.720, "cy": 0.253, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.928, 0.246, 0.998, 0.275), "text": "白俄罗斯", "cx": 0.963, "cy": 0.260, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.448, 0.262, 0.568, 0.290), "text": "荷兰", "cx": 0.508, "cy": 0.276, "size": 9.5, "color": "white", "halo": True, "erase_mode": "dark_text", "thresh": 105},
+        {"erase": (0.809, 0.276, 0.880, 0.307), "text": "波兰", "cx": 0.844, "cy": 0.291, "size": 10, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.548, 0.303, 0.647, 0.331), "text": "德国", "cx": 0.597, "cy": 0.317, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 155},
+        {"erase": (0.425, 0.312, 0.504, 0.339), "text": "比利时", "cx": 0.464, "cy": 0.325, "size": 9.5, "color": "white", "erase_mode": "dark_text", "thresh": 105},
+        {"erase": (0.406, 0.358, 0.444, 0.381), "text": "巴黎", "x": 0.408, "cy": 0.370, "anchor": "lm", "size": 9, "color": "white", "erase_mode": "dark_text", "thresh": 105},
+        {"erase": (0.445, 0.340, 0.568, 0.378), "text": "卢森堡", "cx": 0.506, "cy": 0.359, "size": 9.5, "color": "white", "halo": True, "erase_mode": "dark_text", "thresh": 118},
+        {"erase": (0.678, 0.339, 0.828, 0.375), "text": "捷克", "cx": 0.753, "cy": 0.357, "size": 10, "erase_mode": "dark_text"},
+        {"erase": (0.812, 0.365, 0.908, 0.400), "text": "斯洛伐克", "cx": 0.860, "cy": 0.382, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.924, 0.360, 0.998, 0.389), "text": "乌克兰", "cx": 0.961, "cy": 0.374, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.691, 0.410, 0.770, 0.442), "text": "奥地利", "cx": 0.730, "cy": 0.426, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.798, 0.427, 0.887, 0.461), "text": "匈牙利", "cx": 0.842, "cy": 0.444, "size": 10, "erase_mode": "white"},
+        {"erase": (0.500, 0.430, 0.630, 0.460), "text": "瑞士", "cx": 0.565, "cy": 0.445, "size": 9.5, "halo": True, "erase_mode": "dark_text", "thresh": 145},
+        {"erase": (0.373, 0.438, 0.442, 0.466), "text": "法国", "cx": 0.407, "cy": 0.452, "size": 10.5, "color": "white", "erase_mode": "dark_text", "thresh": 105},
+        {"erase": (0.660, 0.456, 0.742, 0.488), "text": "斯洛文尼亚", "cx": 0.698, "cy": 0.472, "size": 8.5, "color": "white", "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.742, 0.466, 0.813, 0.494), "text": "克罗地亚", "cx": 0.778, "cy": 0.481, "size": 8.5, "color": "white", "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.906, 0.461, 0.995, 0.494), "text": "罗马尼亚", "cx": 0.950, "cy": 0.477, "size": 9.5, "erase_mode": "dark_text"},
+        {"erase": (0.772, 0.516, 0.846, 0.548), "text": "波黑", "cx": 0.809, "cy": 0.532, "size": 9, "erase_mode": "dark_text"},
+        {"erase": (0.713, 0.540, 0.818, 0.602), "text": "塞尔维亚\n和黑山", "cx": 0.762, "cy": 0.571, "size": 8.5, "halo": True, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.618, 0.541, 0.669, 0.570), "text": "意大利", "cx": 0.643, "cy": 0.555, "size": 9, "color": "white", "halo": True, "erase_mode": "dark_text", "thresh": 115},
+        {"erase": (0.918, 0.566, 0.999, 0.604), "text": "保加利亚", "cx": 0.958, "cy": 0.585, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.818, 0.583, 0.924, 0.612), "text": "马其顿", "cx": 0.870, "cy": 0.598, "size": 9, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.830, 0.613, 0.910, 0.645), "text": "阿尔巴尼亚", "cx": 0.870, "cy": 0.629, "size": 8.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.220, 0.637, 0.282, 0.671), "text": "西班牙", "cx": 0.251, "cy": 0.654, "size": 10.5, "erase_mode": "dark_text", "thresh": 150},
+        {"erase": (0.086, 0.660, 0.173, 0.695), "text": "葡萄牙", "cx": 0.130, "cy": 0.677, "size": 10, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.873, 0.671, 0.950, 0.701), "text": "希腊", "cx": 0.911, "cy": 0.686, "size": 9.5, "halo": True, "erase_mode": "dark_text"},
+        {"erase": (0.785, 0.812, 0.975, 0.846), "text": "拿破仑直接统治区", "x": 0.788, "cy": 0.829, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.785, 0.852, 0.966, 0.883), "text": "附庸王国", "x": 0.788, "cy": 0.867, "anchor": "lm", "size": 10, "erase_mode": "white"},
+        {"erase": (0.785, 0.890, 0.976, 0.916), "text": "现代国界", "x": 0.788, "cy": 0.903, "anchor": "lm", "size": 10, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000016.jpg", f"{OUT}/000016.jpg", items, caption="地图 17：拿破仑帝国", caption_y0=0.964)
+
+# ---------------- Map 20: 000019.jpg ----------------
+def render_000019():
+    items = [
+        {"erase": (0.098, 0.061, 0.326, 0.088), "text": "准军事组织活动区", "x": 0.102, "cy": 0.075, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.098, 0.088, 0.308, 0.109), "text": "现代国界", "x": 0.102, "cy": 0.098, "anchor": "lm", "size": 10.5, "erase_mode": "white"},
+        {"erase": (0.456, 0.075, 0.616, 0.106), "text": "巴兰基亚", "cx": 0.536, "cy": 0.091, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.408, 0.105, 0.542, 0.134), "text": "卡塔赫纳", "cx": 0.475, "cy": 0.120, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.404, 0.138, 0.550, 0.166), "text": "圣奥诺弗雷", "cx": 0.477, "cy": 0.152, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.376, 0.187, 0.606, 0.212), "text": "圣菲德拉利托", "cx": 0.490, "cy": 0.200, "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.728, 0.209, 0.910, 0.244), "text": "委内瑞拉", "cx": 0.819, "cy": 0.226, "size": 11.5, "erase_mode": "white"},
+        {"erase": (0.344, 0.233, 0.492, 0.262), "text": "科尔多瓦省", "cx": 0.418, "cy": 0.248, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.440, 0.284, 0.533, 0.301), "text": "阿马尔菲", "x": 0.440, "cy": 0.293, "anchor": "lm", "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.410, 0.316, 0.519, 0.335), "text": "麦德林", "x": 0.412, "cy": 0.326, "anchor": "lm", "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.656, 0.362, 0.802, 0.388), "text": "卡萨纳雷省", "cx": 0.729, "cy": 0.375, "size": 10, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.506, 0.398, 0.600, 0.418), "text": "波哥大", "x": 0.508, "cy": 0.409, "anchor": "lm", "size": 10.5, "halo": True, "erase_mode": "dark_text", "thresh": 148},
+        {"erase": (0.545, 0.446, 0.709, 0.474), "text": "哥伦比亚", "cx": 0.627, "cy": 0.460, "size": 11.5, "halo": True, "erase_mode": "dark_text", "thresh": 152},
+        {"erase": (0.149, 0.710, 0.293, 0.739), "text": "厄瓜多尔", "cx": 0.221, "cy": 0.724, "size": 11.5, "erase_mode": "white"},
+        {"erase": (0.866, 0.756, 0.968, 0.786), "text": "巴西", "cx": 0.917, "cy": 0.771, "size": 11.5, "erase_mode": "white"},
+        {"erase": (0.440, 0.826, 0.526, 0.856), "text": "秘鲁", "cx": 0.483, "cy": 0.841, "size": 11.5, "erase_mode": "white"},
+    ]
+    render_image(f"{CLEAN}/000019.jpg", f"{OUT}/000019.jpg", items, caption="地图 20：1997—2005 年哥伦比亚准军事组织势力分布", caption_y0=0.968)
+
+if __name__ == "__main__":
+    os.makedirs(OUT, exist_ok=True)
+    for fn in [render_000007, render_000008, render_000009, render_000010, render_000011,
+               render_000012, render_000013, render_000014, render_000015, render_000016, render_000019]:
+        fn()
+        print("Rendered", fn.__name__)
