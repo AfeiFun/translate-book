@@ -259,10 +259,10 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated t
 オプションの出力フラグ:
 
 ```bash
-python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated title》" --cover cover.jpg --export-name "translated-title"
+python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated title》" --cover cover.jpg --export-name "translated-title" --toc
 ```
 
-`--cover` は、指定した画像を EPUB を生成する Calibre のステップに渡します。`--export-name` は、パイプラインの正規の成果物 `book.*` を残したまま、`translated-title.epub` のような別名のコピーを作ります。`book_doc` という名前（大文字小文字を区別しない）は予約されており、HTML の別名が `book_doc.html` を上書きしてしまうため、ビルド前に拒否されます。
+`--cover` は、指定した画像を EPUB と PDF を生成する Calibre のステップに渡します。`--toc` は本文の前に実際の目次ページを挿入し、上位 2 階層の見出しを一覧します（見出し文言は 目录/目次/목차/Contents を言語から自動選択）。PDF では各項目のページ番号も印刷し、その番号はページ割り付けを固定するためのプレースホルダー版ビルドから取得します。`--toc-levels 1`、`--toc-start "<見出し>"`、`--toc-title "<文字列>"`、`--no-toc-pages` で調整できます（PyMuPDF が無い場合も自動で番号なしになります）。`book.html` のサイドバー目次とは別物です。`--export-name` は、パイプラインの正規の成果物 `book.*` を残したまま、`translated-title.epub` のような別名のコピーを作ります。`book_doc` という名前（大文字小文字を区別しない）は予約されており、HTML の別名が `book_doc.html` を上書きしてしまうため、ビルド前に拒否されます。
 
 マージの前に、スクリプトは次の点を検証します:
 - すべてのソースチャンクに対応する出力ファイルがあること（1:1 の対応）
@@ -289,6 +289,8 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated t
 | `scripts/merge_meta.py` | バッチ境界でのマージ: サブエージェントの観察結果 → 正規の用語集 |
 | `scripts/run_state.py` | 選択的再翻訳のプランナーと `run_state.json` の記録 |
 | `scripts/merge_and_build.py` | チャンクのマージ → HTML → DOCX/EPUB/PDF |
+| `scripts/toc.py` | 本文内の目次ページ：ASCII 見出し id、点線リーダー、PDF ページ番号 |
+| `scripts/qa_chunks.py` | ビルド前の訳文チェック（空、未翻訳、OCR 残り） |
 | `scripts/calibre_html_publish.py` | フォーマット変換用の Calibre ラッパー |
 | `scripts/template.html` | フローティング目次付きの Web 用 HTML テンプレート |
 | `scripts/template_ebook.html` | 電子書籍用 HTML テンプレート |

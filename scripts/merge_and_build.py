@@ -19,6 +19,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 from manifest import read_output_text, validate_for_merge
+import toc as toc_mod
 
 
 # =============================================================================
@@ -939,7 +940,7 @@ def add_toc(temp_dir):
 def generate_format(html_file, temp_dir, output_ext, lang_attr, cover=None):
     """Generate a specific format using calibre_html_publish.py"""
     output_file = os.path.join(temp_dir, f"book{output_ext}")
-    cover = cover if output_ext == '.epub' else None
+    cover = cover if output_ext in ('.epub', '.pdf') else None
     if cover and not os.path.isfile(cover):
         print(f"Cover image not found: {cover}")
         return None
@@ -1007,7 +1008,7 @@ def generate_format(html_file, temp_dir, output_ext, lang_attr, cover=None):
         return None
 
 
-def generate_formats(temp_dir, lang_attr, cover=None):
+def generate_formats(temp_dir, lang_attr, cover=None, formats=('.docx', '.epub', '.pdf')):
     """Generate DOCX, EPUB, and PDF with result summary"""
     print("=== Generating output formats ===")
 
@@ -1021,7 +1022,7 @@ def generate_formats(temp_dir, lang_attr, cover=None):
             return
 
     results = {}
-    for ext in ['.docx', '.epub', '.pdf']:
+    for ext in formats:
         result = generate_format(html_file, temp_dir, ext, lang_attr, cover=cover)
         if result:
             file_size = os.path.getsize(result)
@@ -1088,6 +1089,67 @@ def export_named_aliases(temp_dir, export_name):
 # Main
 # =============================================================================
 
+def insert_book_toc(temp_dir, lang_code, lang_attr, cover=None, title=None,
+                    levels=(1, 2), start_heading=None, page_numbers=True):
+    """Insert the TOC page into book_doc.html and, for PDF, add page numbers.
+
+    The numbered PDF is built twice: once with placeholder numbers to fix the
+    layout (so pagination cannot shift afterwards), then with the folios read
+    back from that PDF. book_doc.html is left holding the link-only TOC, which
+    is what EPUB/DOCX/browsers should get.
+
+    Returns (inserted, pdf_built).
+    """
+    doc_html = os.path.join(temp_dir, "book_doc.html")
+    if not os.path.exists(doc_html):
+        print("Skipping TOC — book_doc.html not found")
+        return (False, False)
+
+    base = open(doc_html, encoding="utf-8").read()
+    title = toc_mod.toc_title_for(lang_code, title)
+    try:
+        plain_html, items = toc_mod.insert_toc(base, None, title, levels, start_heading)
+    except ValueError as e:
+        print(f"Skipping TOC — {e}")
+        return (False, False)
+
+    print(f"=== Inserting TOC: {len(items)} entries ({title}) ===")
+    open(doc_html, "w", encoding="utf-8").write(plain_html)
+
+    if not page_numbers:
+        return (True, False)
+
+    pdf = os.path.join(temp_dir, "book.pdf")
+    placeholder = ["000"] * len(items)
+    numbered_html, _ = toc_mod.insert_toc(base, placeholder, title, levels, start_heading)
+    open(doc_html, "w", encoding="utf-8").write(numbered_html)
+    if os.path.exists(pdf):
+        os.remove(pdf)
+    if not generate_format(doc_html, temp_dir, ".pdf", lang_attr, cover=cover):
+        open(doc_html, "w", encoding="utf-8").write(plain_html)
+        print("TOC added without page numbers — first PDF pass failed")
+        return (True, False)
+
+    try:
+        numbers = toc_mod.resolve_pdf_pages(pdf, [t for _, _, t in items])
+    except RuntimeError as e:
+        open(doc_html, "w", encoding="utf-8").write(plain_html)
+        print(f"TOC added without page numbers — {e}")
+        return (True, False)
+
+    final_html, _ = toc_mod.insert_toc(base, numbers, title, levels, start_heading)
+    open(doc_html, "w", encoding="utf-8").write(final_html)
+    os.remove(pdf)
+    if not generate_format(doc_html, temp_dir, ".pdf", lang_attr, cover=cover):
+        print("Second PDF pass failed; the TOC keeps placeholder numbers")
+        return (True, False)
+
+    missing = sum(1 for n in numbers if not n)
+    print(f"TOC page numbers resolved ({len(numbers) - missing}/{len(numbers)})")
+    open(doc_html, "w", encoding="utf-8").write(plain_html)
+    return (True, True)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Merge translated pages and build final outputs')
     parser.add_argument('--temp-dir', required=True, help='Temp directory path')
@@ -1096,6 +1158,14 @@ def main():
     parser.add_argument('--lang', default=None, help='Output language code (override config)')
     parser.add_argument('--cover', default=None, help='Cover image path for EPUB output')
     parser.add_argument('--export-name', default=None, help='Optional filename stem for exported alias copies')
+    parser.add_argument('--toc', action='store_true',
+                        help='Insert a table-of-contents page before the first chapter (PDF gets page numbers)')
+    parser.add_argument('--toc-title', default=None, help='TOC heading (default: localized 目录/Contents)')
+    parser.add_argument('--toc-levels', default='1,2', help='Heading levels to list, e.g. 1,2 (default) or 1')
+    parser.add_argument('--toc-start', default=None,
+                        help='Heading text where the TOC starts (default: the second level-1 heading)')
+    parser.add_argument('--no-toc-pages', action='store_true',
+                        help='Skip PDF page numbers in the TOC (also when PyMuPDF is unavailable)')
     parser.add_argument('--cleanup', action='store_true', help='Remove intermediate artifacts after successful build')
 
     args = parser.parse_args()
@@ -1146,8 +1216,23 @@ def main():
     # Step 6: Add TOC
     add_toc(temp_dir)
 
+    # Step 6b: optional in-book TOC page (EPUB/DOCX/PDF), with PDF page numbers
+    toc_inserted, toc_pdf_built = False, False
+    if args.toc:
+        levels = tuple(int(x) for x in args.toc_levels.split(',') if x.strip())
+        toc_inserted, toc_pdf_built = insert_book_toc(
+            temp_dir, lang_code, lang_cfg['lang_attr'], cover=cover,
+            title=args.toc_title, levels=levels, start_heading=args.toc_start,
+            page_numbers=not args.no_toc_pages,
+        )
+
     # Step 7: Generate formats
-    all_formats_ok = generate_formats(temp_dir, lang_cfg['lang_attr'], cover=cover)
+    formats = ['.docx', '.epub', '.pdf']
+    if toc_pdf_built:
+        # The numbered PDF was already built from the TOC-paginated HTML; the
+        # on-disk HTML now holds the link-only TOC, so rebuilding would lose it.
+        formats.remove('.pdf')
+    all_formats_ok = generate_formats(temp_dir, lang_cfg['lang_attr'], cover=cover, formats=tuple(formats))
 
     if export_name:
         if all_formats_ok:

@@ -18,7 +18,7 @@ Determine the following from the user's message:
 - **target_lang**: Target language code (default: `zh`) — e.g. zh, en, ja, ko, fr, de, es
 - **concurrency**: Number of parallel sub-agents per batch (default: `8`)
 - **temp_root**: Optional directory under which `{filename}_temp/` should be created
-- **epub_cover**: Optional explicit cover image path for EPUB output
+- **epub_cover**: Optional explicit cover image path (EPUB and PDF output)
 - **export_name**: Optional filename stem for user-facing output aliases
 - **custom_instructions**: Any additional translation instructions from the user (optional)
 
@@ -371,6 +371,17 @@ Also read `manifest.json` and verify:
 - Every chunk id has a corresponding output file
 - No output file is empty (0 bytes) or blank (whitespace-only)
 
+Run the mechanical QA sweep (empty/English-only outputs, OCR leftovers such as a
+stray `~`, replacement characters, unbalanced code fences, invented headings):
+
+```bash
+python3 {baseDir}/scripts/qa_chunks.py "<temp_dir>"
+```
+
+It exits non-zero and lists the offending chunks. Treat it as a checklist, not a
+court: a Latin-heavy chunk in a book of quotations can be legitimate, but "no CJK
+at all" or "missing output" always means the sub-agent failed.
+
 Then run the meta-merge observability snapshot:
 
 ```bash
@@ -410,6 +421,29 @@ Run the build script with the translated title:
 ```bash
 python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<translated_title>"
 ```
+
+Add `--toc` when the book should carry a table-of-contents page before the first
+chapter (readers expect one in EPUB/DOCX/PDF; `book.html` already gets a
+floating sidebar TOC):
+
+```bash
+python3 {baseDir}/scripts/merge_and_build.py --temp-dir "<temp_dir>" --title "<translated_title>" \
+  --cover "<cover.jpg>" --toc
+```
+
+`--toc` lists the top two heading levels by default. Carve it with
+`--toc-levels 1`, `--toc-start "<heading text>"` (where to stop skipping the
+front matter) and `--toc-title "<text>"` (defaults to 目录/目次/목차/Contents by
+language). For PDF it builds twice: once with placeholder numbers to freeze the
+pagination, then again with the page number of every entry read back from the
+first pass, so the printed folios are correct by construction. Without PyMuPDF
+(`import fitz`) it degrades to a TOC without page numbers; `--no-toc-pages` forces
+that. EPUB and DOCX always get the link-only variant, because their pagination
+differs from the PDF's.
+
+The heading ids are rewritten to ASCII (`sec001…`) as part of this step. That is
+required: Calibre's EPUB splitter cannot resolve non-ASCII fragment links and
+silently points every TOC entry at the first split file.
 
 If the user provided `epub_cover`, add `--cover "<epub_cover>"`. If the user
 provided `export_name`, add `--export-name "<export_name>"`.
@@ -497,3 +531,74 @@ chunks rather than `output.md`: whenever a chunk changes, the build re-merges
 3. Re-run the Step 7 build command with the same flags. It re-merges because
    the chunk is newer than `output.md`, then regenerates the HTML and the other
    formats.
+
+### 10. Field Notes: Scanned Sources, CJK Targets, Large Books
+
+Hard-won details from a 325-chunk, 450-page scanned book translated to Chinese.
+None of them are optional on a run of that shape.
+
+**Scanned PDFs with a hidden OCR layer.** Calibre's HTMLZ path keeps the
+full-page scan images and throws the hidden text layer away — a 450-page book
+comes out as ~2,800 characters of text. Check with `pdftotext <file.pdf> - |
+wc -c` before trusting Calibre. If the text is there in `pdftotext` but not in
+the Calibre output, extract the layer yourself and feed Markdown to
+`convert.py`:
+
+```bash
+pdftohtml -hidden -i -xml "<file.pdf>" /tmp/book.xml   # layout + font styles
+# clean XML -> Markdown: drop running heads/folios, merge drop caps and
+# hyphenated line breaks, restore #/##/### levels
+python3 {baseDir}/scripts/convert.py "/abs/path/book.md" --olang zh
+```
+
+Keep the Markdown file name equal to the PDF stem: the temp directory is named
+after it.
+
+**`plan` will re-queue everything after the glossary grows.** Once
+`merge_meta.py` has merged a few hundred terms, every earlier chunk reports
+`glossary_term_selection_changed`. That is expected bookkeeping, not a signal to
+re-translate 300 chunks. Use `plan` to find chunks with **no output**, and
+translate only those; only re-translate a recorded chunk when the user asks for
+it or its source/term hash genuinely changed.
+
+**EPUB navigation is empty for CJK unless you say otherwise.** Calibre's default
+chapter detection matches English words (`chapter`, `section`, …); Chinese,
+Japanese and Korean headings match nothing, so `nav.xhtml` ends up with a single
+"start" entry. `calibre_html_publish.py` now passes
+`--level1-toc "//h:h1" --level2-toc "//h:h2"` for `zh*`/`ja*`/`ko*`. Verify after
+building:
+
+```bash
+unzip -p book.epub nav.xhtml | grep -c '<li>'
+grep -o 'href="[^"]*"' nav.xhtml | sort -u | wc -l   # must be >1
+```
+
+**Non-ASCII heading ids break EPUB fragment links.** Calibre resolves
+`#序言` to the first split file instead of the real one, so every TOC entry
+jumps to the start. `--toc` rewrites ids to `sec001…`; if you hand-build a TOC,
+do the same.
+
+**Prompt files beat per-chunk prompt assembly.** With 300+ chunks, assembling
+"rules + term table + neighbour context" by hand for each sub-agent is where
+runs go wrong. Write one self-contained prompt file per chunk first:
+
+```bash
+python3 {baseDir}/scripts/glossary.py print-terms-for-chunk "<temp_dir>" "chunk0007.md" \
+  > /tmp/prompts/chunk0007.md
+python3 {baseDir}/scripts/chunk_context.py "<temp_dir>" "chunk0007.md" >> /tmp/prompts/chunk0007.md
+```
+
+then spawn each sub-agent with "read `/tmp/prompts/chunk0007.md` and carry out
+the task it describes". Write those files atomically (temp file + rename) if you
+regenerate them mid-run for chunks that are still in flight.
+
+**OCR text needs a correction rule, not a cleanup pass.** ABBYY-era scans carry
+`ofthe`, `pa~` for "party", `lVOmen` for "women", `communit))` for "community".
+Add to `{CUSTOM_INSTRUCTIONS}`: "obvious OCR damage must be translated by
+intended meaning; no `~` may survive into the output". `qa_chunks.py` flags any
+that do.
+
+**Spot-check the build, not just the files.** Render a few pages
+(`pdftoppm -f 40 -l 40 -r 120 -png book.pdf out`) and confirm the folios, the
+running text and the TOC page numbers agree. A TOC that lists page 7 for a
+chapter that starts on 8 looks correct in every log line.

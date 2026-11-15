@@ -259,10 +259,10 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《译后书名
 可选输出参数：
 
 ```bash
-python3 scripts/merge_and_build.py --temp-dir book_temp --title "《译后书名》" --cover cover.jpg --export-name "译后书名"
+python3 scripts/merge_and_build.py --temp-dir book_temp --title "《译后书名》" --cover cover.jpg --export-name "译后书名" --toc
 ```
 
-`--cover` 会把显式封面图传给 EPUB 的 Calibre 步骤。`--export-name` 会额外生成如 `译后书名.epub` 的别名副本，同时保留内部 canonical 的 `book.*` 产物。`book_doc` 是保留名称（不区分大小写），会在构建前被拒绝，因为其 HTML 别名会覆盖 `book_doc.html`。
+`--cover` 会把显式封面图传给 EPUB 与 PDF 的 Calibre 步骤。`--toc` 会在第一章前插入真正的目录页，列出前两级标题（标题文案随语言自动选择：目录/目次/목차/Contents）；PDF 还会为每个条目打印页码，页码来自"占位数字"的那一遍构建，从而保证排版不再位移。可用 `--toc-levels 1`、`--toc-start "<标题>"`、`--toc-title "<文字>"` 调整，或用 `--no-toc-pages` 关闭页码（未安装 PyMuPDF 时也会自动降级）。它与 `book.html` 的侧边栏浮动目录是两回事。`--export-name` 会额外生成如 `译后书名.epub` 的别名副本，同时保留内部 canonical 的 `book.*` 产物。`book_doc` 是保留名称（不区分大小写），会在构建前被拒绝，因为其 HTML 别名会覆盖 `book_doc.html`。
 
 合并前校验：
 - 每个源 chunk 都有对应的输出文件（1:1 匹配）
@@ -289,6 +289,8 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《译后书名
 | `scripts/merge_meta.py` | 批次边界合并：子 agent 观察 → canonical 术语表 |
 | `scripts/run_state.py` | 精确重译规划器和 `run_state.json` 记录器 |
 | `scripts/merge_and_build.py` | 合并 chunks → HTML → DOCX/EPUB/PDF |
+| `scripts/toc.py` | 书内目录页：ASCII 标题 id、点线引导、PDF 页码 |
+| `scripts/qa_chunks.py` | 构建前的译文体检（空文件、未翻译、OCR 残留） |
 | `scripts/calibre_html_publish.py` | Calibre 格式转换封装 |
 | `scripts/template.html` | 网页 HTML 模板，含浮动目录 |
 | `scripts/template_ebook.html` | 电子书 HTML 模板 |

@@ -206,6 +206,11 @@ def get_output_format(output_file):
     }
     return format_map.get(ext)
 
+def _is_cjk_lang(lang):
+    """True for languages whose chapter titles Calibre cannot auto-detect."""
+    return (lang or "").lower().startswith(("zh", "ja", "ko"))
+
+
 def convert_html_with_calibre(html_file, output_file, format_type, timeout=600, lang="zh-CN", cover=None):
     """Convert HTML to specified format using Calibre with timeout protection"""
     
@@ -244,8 +249,15 @@ def convert_html_with_calibre(html_file, output_file, format_type, timeout=600, 
         ])
         if cover:
             cmd.extend(["--cover", cover])
+        # Calibre's default chapter detection regex only matches English words
+        # like "chapter"/"section", so a CJK book ends up with an empty EPUB
+        # navigation document. Point it at the headings instead.
+        if _is_cjk_lang(lang):
+            cmd.extend(["--level1-toc", "//h:h1", "--level2-toc", "//h:h2"])
     elif format_type == 'pdf':
         pdf_font = _get_pdf_font_for_lang(lang)
+        if cover:
+            cmd.extend(["--cover", cover, "--preserve-cover-aspect-ratio"])
         cmd.extend([
             "--pdf-page-numbers",
             "--pdf-serif-family", pdf_font,
@@ -288,7 +300,7 @@ def main():
     parser.add_argument('--lang', default='zh-CN',
                        help='Language code for output metadata (default: zh-CN)')
     parser.add_argument('--cover', default=None,
-                       help='Cover image path for EPUB output')
+                       help='Cover image path (EPUB and PDF)')
     
     args = parser.parse_args()
     
@@ -307,8 +319,8 @@ def main():
         sys.exit(1)
 
     if args.cover:
-        if format_type != 'epub':
-            print("Error: --cover is only supported for EPUB output")
+        if format_type not in ('epub', 'pdf'):
+            print("Error: --cover is only supported for EPUB and PDF output")
             sys.exit(1)
         if not os.path.isfile(args.cover):
             print(f"Error: Cover image not found: {args.cover}")
