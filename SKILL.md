@@ -59,19 +59,24 @@ keep every standalone number (chapter, verse or exercise numbers). If an EPUB
 prints its page numbers as text and they show up in the chunks, delete the
 temp directory before translating and re-run with `--detect-page-numbers`.
 
-**Chunk size.** `--chunk-size` is a *character* target (default 6000; splits land
-on structural boundaries, so real chunks run a little smaller). The trade-off is
-wall-clock against per-sub-agent output length:
+**Chunk size.** `--chunk-size` is a *character* target (default **40000**). Splits
+also land on structural boundaries, so a "40000" book usually comes out as one
+chunk per chapter and the largest chunk is whatever its longest chapter is.
 
 | Source | Recommended | Why |
 | --- | --- | --- |
-| English prose → Chinese, footnotes/notes sections | 9000–12000 | one sub-agent still emits only ~2500–3500 Chinese characters; chunks roughly halve |
-| Dense academic text, math, tables, inline citations | 6000 | long outputs truncate and terminology drifts |
-| 300+ chunk books where turns are the bottleneck | 12000–15000 | fewer waves; verify the first batch for truncation before committing |
+| Default | **40000** | ~15k Chinese characters per sub-agent; measured safe |
+| Books whose chapters exceed 60k characters | 40000 (splits inside the chapter) | keeps every unit inside the reliable band |
+| Dense math/tables, or a model with a small output budget | 12000–20000 | long outputs truncate silently |
+| Testing a new model or a new style | 6000–10000 | cheap failures |
 
-Nothing in the pipeline depends on 6000; re-chunking an existing temp directory
-is not supported, so pick the size before the first translation. If the user
-complains about speed, this is the knob to turn — not concurrency alone.
+Above ~50k characters per chunk the failure mode is silent truncation: the
+sub-agent writes a file that ends mid-book with no error at all. That is why
+Step 4.6 exists; do not raise the size further without it.
+
+Re-chunking an existing temp directory is not supported, so pick the size before
+the first translation. If the user complains about speed, this is the knob to
+turn — not concurrency alone.
 
 This creates a `{filename}_temp/` directory containing:
 - `input.html` (Calibre input only), `input.md` — intermediate files
@@ -256,6 +261,42 @@ sub-agent must never translate it into the output.
 The meta file is read by the main agent later and merged into `glossary.json` (see `merge_meta.py`). Sub-agents should fill the schema honestly: cite real quotes from the chunk, never invent entities to "look productive". An empty meta is a perfectly valid output.
 
 **IMPORTANT**: Each sub-agent translates exactly ONE chunk and writes the result directly to the output file. No START/END markers needed.
+
+### 4.6. Verify Each Batch and Bisect Truncation
+
+A sub-agent that runs out of output budget does not fail — it writes a file that
+stops mid-book. Nothing in `ls`, `wc -c` or the meta merge notices. Run the
+completeness check after recording a batch (before or after 4.5, but before
+moving on):
+
+```bash
+python3 {baseDir}/scripts/verify_chunk.py "<temp_dir>"
+```
+
+It flags `truncated` (far fewer blocks than the source), `unterminated` (short
+output with no sentence-final punctuation) and `missing`/`empty`. Repair each
+flagged chunk by bisecting it — never by re-running the same size, which will
+fail the same way:
+
+```bash
+python3 {baseDir}/scripts/split_chunk.py "<temp_dir>" chunk0042 --style readable --lang 简体中文
+# spawns one prompt per part (chunk0042a, chunk0042b); give each its own sub-agent
+python3 {baseDir}/scripts/join_chunk.py "<temp_dir>" chunk0042
+```
+
+`split_chunk.py` cuts at a paragraph boundary (preferring a heading), writes the
+part files and their prompts. `join_chunk.py` concatenates the part outputs,
+merges their meta files into `output_chunk0042.meta.json`, re-runs the check and
+only then deletes the parts. If the joined result is still short it keeps
+everything and exits non-zero — re-split with `--parts 3`.
+
+Then `run_state.py record` the repaired chunk. Two rounds of bisection is the
+practical limit; after that, reduce `--chunk-size` for the remaining work rather
+than fighting one pathological chapter.
+
+Live example: a 101,603-character chunk came back with 71 of 209 paragraphs
+(34%) and no error message; split in two it produced 36,324 characters and
+passed. Neighbouring 20k–55k chunks were fine, so the ceiling sits near 50k.
 
 ### 4.5. Merge Sub-Agent Meta Into Glossary (after each batch)
 

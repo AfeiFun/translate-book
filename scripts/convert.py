@@ -1181,7 +1181,7 @@ def parse_structural_blocks(content):
     return blocks
 
 
-def merge_blocks_to_chunks(blocks, target_size=6000):
+def merge_blocks_to_chunks(blocks, target_size=40000):
     """Merge structural blocks into chunks respecting target_size.
 
     Prefers to split at heading boundaries. Never splits within a single
@@ -1301,7 +1301,7 @@ def _force_split_block(text, target_size):
     return chunks
 
 
-def split_markdown_structured(md_file, temp_dir, target_size=6000):
+def split_markdown_structured(md_file, temp_dir, target_size=40000):
     """Split markdown into structural chunks.
 
     Returns list of chunk filenames (e.g. ['chunk0001.md', ...]).
@@ -1439,7 +1439,8 @@ def main():
     )
     parser.add_argument("-l", "--ilang", default="auto", help="Input language (default: auto)")
     parser.add_argument("--olang", default="zh", help="Output language (default: zh)")
-    parser.add_argument("--chunk-size", type=int, default=6000, help="Target chunk size in characters (default: 6000)")
+    parser.add_argument("--chunk-size", type=int, default=40000,
+                        help="Target chunk size in characters (default: 40000; splits also break at headings)")
     parser.add_argument(
         "--temp-root",
         default=None,

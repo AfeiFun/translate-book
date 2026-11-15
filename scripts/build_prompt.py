@@ -76,6 +76,7 @@ def render(temp_dir, chunk_id, lang_name, style_name, custom, out_path):
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{chunk_id}.md")
 
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     tmp = out_path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         fh.write(text)

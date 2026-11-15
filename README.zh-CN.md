@@ -262,7 +262,7 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《译后书名
 python3 scripts/merge_and_build.py --temp-dir book_temp --title "《译后书名》" --cover cover.jpg --export-name "译后书名" --toc
 ```
 
-`convert.py --chunk-size` 是分块字符数目标（默认 6000）：块越大子代理越少、出书越快，一般散文 9000–12000 合适，密集学术文本用 6000。`build_prompt.py --style` 选择翻译风格预设（默认 `scholarly`，另有 `readable`、`literary`、`plain`、`bilingual`，见 `scripts/style.py list`）。`--cover` 会把显式封面图传给 EPUB 与 PDF 的 Calibre 步骤。`--toc` 会在第一章前插入真正的目录页，列出前两级标题（标题文案随语言自动选择：目录/目次/목차/Contents）；PDF 还会为每个条目打印页码，页码来自"占位数字"的那一遍构建，从而保证排版不再位移。可用 `--toc-levels 1`、`--toc-start "<标题>"`、`--toc-title "<文字>"` 调整，或用 `--no-toc-pages` 关闭页码（未安装 PyMuPDF 时也会自动降级）。它与 `book.html` 的侧边栏浮动目录是两回事。`--export-name` 会额外生成如 `译后书名.epub` 的别名副本，同时保留内部 canonical 的 `book.*` 产物。`book_doc` 是保留名称（不区分大小写），会在构建前被拒绝，因为其 HTML 别名会覆盖 `book_doc.html`。
+`convert.py --chunk-size` 是分块字符数目标（默认 40000）——分块同时会在标题处断开，所以一本书通常按章成块。超过约 5 万字符时子代理会静默截断，`verify_chunk.py` 能查出来，`split_chunk.py` / `join_chunk.py` 负责二分重译再拼回。`build_prompt.py --style` 选择翻译风格预设（默认 `scholarly`，另有 `readable`、`literary`、`plain`、`bilingual`，见 `scripts/style.py list`）。`--cover` 会把显式封面图传给 EPUB 与 PDF 的 Calibre 步骤。`--toc` 会在第一章前插入真正的目录页，列出前两级标题（标题文案随语言自动选择：目录/目次/목차/Contents）；PDF 还会为每个条目打印页码，页码来自"占位数字"的那一遍构建，从而保证排版不再位移。可用 `--toc-levels 1`、`--toc-start "<标题>"`、`--toc-title "<文字>"` 调整，或用 `--no-toc-pages` 关闭页码（未安装 PyMuPDF 时也会自动降级）。它与 `book.html` 的侧边栏浮动目录是两回事。`--export-name` 会额外生成如 `译后书名.epub` 的别名副本，同时保留内部 canonical 的 `book.*` 产物。`book_doc` 是保留名称（不区分大小写），会在构建前被拒绝，因为其 HTML 别名会覆盖 `book_doc.html`。
 
 合并前校验：
 - 每个源 chunk 都有对应的输出文件（1:1 匹配）
@@ -293,6 +293,8 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《译后书名
 | `scripts/qa_chunks.py` | 构建前的译文体检（空文件、未翻译、OCR 残留） |
 | `scripts/style.py` | 翻译风格预设，规则写成可执行条目（`scripts/styles/*.md`） |
 | `scripts/build_prompt.py` | 为每个 chunk 生成一份自包含的指令文件 |
+| `scripts/verify_chunk.py` | 译文完整性检查（缺失/空白/截断/未收尾） |
+| `scripts/split_chunk.py` / `scripts/join_chunk.py` | 截断块二分重译并拼回 |
 | `scripts/calibre_html_publish.py` | Calibre 格式转换封装 |
 | `scripts/template.html` | 网页 HTML 模板，含浮动目录 |
 | `scripts/template_ebook.html` | 电子书 HTML 模板 |
