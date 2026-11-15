@@ -28,26 +28,30 @@ def _paragraphs(text):
 
 
 def split_text(text, parts):
-    """Split at the paragraph boundary closest to each 1/parts fraction."""
-    paras = _paragraphs(text)
+    """Split at the paragraph boundary closest to each 1/parts character share."""
+    paras = text.split("\n\n")
     total = len(paras)
     if total < parts * 2:
         raise SystemExit("chunk has too few paragraphs to bisect")
 
+    total_chars = len(text)
     cuts = []
-    window = max(1, total // 10)
     for i in range(1, parts):
-        target = int(total * i / parts)
-        # prefer a cut right before a heading, within 10% of the target
-        best, best_score = target, -1
-        for idx in range(max(1, target - window), min(total, target + window + 1)):
-            if paras[idx].lstrip().startswith("#"):
-                best = idx
-                break
-            score = len(paras[idx - 1])
-            if score > best_score:
-                best, best_score = idx, score
-        cuts.append(best)
+        target_chars = total_chars * i / parts
+
+        # paragraph index whose cumulative end sits closest to the character target
+        pos, best_idx, best_diff = 0, 1, None
+        for idx, para in enumerate(paras):
+            pos += len(para) + 2
+            diff = abs(pos - target_chars)
+            if best_diff is None or diff < best_diff:
+                best_idx, best_diff = idx + 1, diff
+
+        # a heading within ~10% of the paragraphs makes a cleaner cut
+        window = max(1, total // 10)
+        headings = [k for k in range(max(1, best_idx - window), min(total, best_idx + window + 1))
+                    if paras[k].lstrip().startswith("#")]
+        cuts.append(min(headings, key=lambda k: abs(k - best_idx)) if headings else best_idx)
 
     out, prev = [], 0
     for cut in cuts + [total]:

@@ -34,6 +34,11 @@ class SplitTextTests(unittest.TestCase):
         parts = split_chunk.split_text(text, 2)
         self.assertTrue(parts[1].startswith("# 第六章"))
 
+    def test_parts_are_balanced(self):
+        text = "\n\n".join(f"第{i}段。" * 40 for i in range(40))
+        a, b = split_chunk.split_text(text, 2)
+        self.assertLess(abs(len(a) - len(b)) / max(len(a), len(b)), 0.35)
+
     def test_rejects_tiny_chunk(self):
         with self.assertRaises(SystemExit):
             split_chunk.split_text("只有一段。", 2)
