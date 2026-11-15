@@ -17,6 +17,7 @@ Determine the following from the user's message:
 - **file_path**: Path to the input file (PDF, DOCX, EPUB, or Markdown) — REQUIRED
 - **target_lang**: Target language code (default: `zh`) — e.g. zh, en, ja, ko, fr, de, es
 - **concurrency**: Number of parallel sub-agents per batch (default: `8`)
+- **style**: Translation style preset — `scholarly` (default), `readable`, `literary`, `plain`, `bilingual`. See `scripts/style.py list`; ask the user if the genre suggests something other than the default
 - **temp_root**: Optional directory under which `{filename}_temp/` should be created
 - **epub_cover**: Optional explicit cover image path (EPUB and PDF output)
 - **export_name**: Optional filename stem for user-facing output aliases
@@ -29,7 +30,7 @@ If the file path is not provided, ask the user.
 Run the conversion script to produce chunks:
 
 ```bash
-python3 {baseDir}/scripts/convert.py "<file_path>" --olang "<target_lang>"
+python3 {baseDir}/scripts/convert.py "<file_path>" --olang "<target_lang>" [--chunk-size N]
 ```
 
 If the user provided `temp_root`, add `--temp-root "<temp_root>"`. The temp
@@ -57,6 +58,20 @@ Page-number lines are detected and dropped for PDF input only; EPUB and DOCX
 keep every standalone number (chapter, verse or exercise numbers). If an EPUB
 prints its page numbers as text and they show up in the chunks, delete the
 temp directory before translating and re-run with `--detect-page-numbers`.
+
+**Chunk size.** `--chunk-size` is a *character* target (default 6000; splits land
+on structural boundaries, so real chunks run a little smaller). The trade-off is
+wall-clock against per-sub-agent output length:
+
+| Source | Recommended | Why |
+| --- | --- | --- |
+| English prose → Chinese, footnotes/notes sections | 9000–12000 | one sub-agent still emits only ~2500–3500 Chinese characters; chunks roughly halve |
+| Dense academic text, math, tables, inline citations | 6000 | long outputs truncate and terminology drifts |
+| 300+ chunk books where turns are the bottleneck | 12000–15000 | fewer waves; verify the first batch for truncation before committing |
+
+Nothing in the pipeline depends on 6000; re-chunking an existing temp directory
+is not supported, so pick the size before the first translation. If the user
+complains about speed, this is the knob to turn — not concurrency alone.
 
 This creates a `{filename}_temp/` directory containing:
 - `input.html` (Calibre input only), `input.md` — intermediate files
@@ -163,37 +178,47 @@ Launch chunks in batches to respect API rate limits:
 
 The output file is `output_` prefixed to the source filename: `chunk0001.md` → `output_chunk0001.md`.
 
-> Translate the file `<temp_dir>/chunk<NNNN>.md` to {TARGET_LANGUAGE} and write the result to `<temp_dir>/output_chunk<NNNN>.md`. Follow the translation rules below. Output only the translated content — no commentary.
-
-Each sub-agent receives:
-- The single chunk file it is responsible for
-- The temp directory path
-- The target language
-- The translation prompt (see below)
-- A per-chunk term table (see "Term table assembly" below)
-- Read-only neighboring chunk excerpts (see "Neighbor context assembly" below)
-- Any custom instructions
-
-**Term table assembly** — before spawning a sub-agent, run:
+Do not assemble the prompt by hand for every chunk — render it once per chunk with
+the builder. It fills the canonical template (`scripts/prompt_template.md`) with
+the style block, the per-chunk term table, the neighbour excerpts and the meta
+schema, so 300 sub-agents receive byte-identical rules:
 
 ```bash
-python3 {baseDir}/scripts/glossary.py print-terms-for-chunk "<temp_dir>" "chunk<NNNN>.md"
+python3 {baseDir}/scripts/build_prompt.py "<temp_dir>" --all \
+  --style readable --lang 简体中文 --custom "<book-specific notes or a .md path>"
+# or one chunk:
+python3 {baseDir}/scripts/build_prompt.py "<temp_dir>" "chunk0042" --style scholarly
 ```
 
-Capture stdout. The CLI emits a 3-column markdown table (`原文 | 别名 | 译文`) of every term that either appears in this chunk (by source OR any alias) OR is in the top-N most-frequent terms book-wide. Inject the table as `{TERM_TABLE}` in rule #13 of the translation prompt. **If stdout is empty (no glossary, or no relevant terms), omit rule #13 from this chunk's prompt entirely** — do not leave a dangling `{TERM_TABLE}` placeholder.
+It writes `prompts/<chunk>.md` (or `-o <path>`) and prints the path. Then spawn
+each sub-agent with:
 
-**Neighbor context assembly** — before spawning a sub-agent, run:
+> 读取 `prompts/chunk<NNNN>.md` 并严格执行其中描述的任务。
+
+The prompt already includes: the 11 base rules, the style block, any custom
+instructions, the term table, the read-only neighbour excerpts, and the meta
+schema. Keep your own spawn message to one line — anything you add on top will
+differ from chunk to chunk.
+
+**Styles.** `--style` picks a rule set from `scripts/styles/`; run
+`python3 {baseDir}/scripts/style.py list` for the current set (default
+`scholarly`; also `readable`, `literary`, `plain`, `bilingual`). Styles are
+executable rules ("拆长句、去欧化、'被'字句只在必要处保留"), not adjectives, and
+every chunk in a run must use the same one. Confirm the choice with the user
+before Step 4, and record it in `config.txt` if it is not the default:
 
 ```bash
-python3 {baseDir}/scripts/chunk_context.py "<temp_dir>" "chunk<NNNN>.md"
+printf 'style=%s\n' readable >> "<temp_dir>/config.txt"
 ```
 
-Capture stdout. The CLI emits prompt-ready read-only excerpts: the last ~300
-characters of the previous chunk and the first ~300 characters of the next
-chunk when those files exist. Inject this block as `{NEIGHBOR_CONTEXT}`. If
-stdout is empty, omit the neighbor-context block entirely. The sub-agent must
-not translate neighboring excerpts or copy them into the output; they are only
-for pronoun, gender, and entity-resolution context.
+**Term table and neighbour context** are produced by the builder via
+`glossary.py print-terms-for-chunk` and `chunk_context.py`. If you need them
+alone: the first emits a 3-column markdown table (`原文 | 别名 | 译文`) of every
+term that appears in this chunk (by source OR alias) or is in the top-N
+book-wide terms; the second emits the last ~300 characters of the previous chunk
+and the first ~300 of the next. Both are omitted from the prompt when empty. The
+neighbour block is read-only context for pronouns, gender and aliases — the
+sub-agent must never translate it into the output.
 
 **Each sub-agent's task**:
 1. Read the source chunk file (e.g. `chunk0001.md`)
@@ -231,77 +256,6 @@ for pronoun, gender, and entity-resolution context.
 The meta file is read by the main agent later and merged into `glossary.json` (see `merge_meta.py`). Sub-agents should fill the schema honestly: cite real quotes from the chunk, never invent entities to "look productive". An empty meta is a perfectly valid output.
 
 **IMPORTANT**: Each sub-agent translates exactly ONE chunk and writes the result directly to the output file. No START/END markers needed.
-
-#### Translation Prompt for Sub-Agents
-
-Include this translation prompt in each sub-agent's instructions (replace `{TARGET_LANGUAGE}` with the actual language name, e.g. "Chinese"):
-
----
-
-请翻译markdown文件为 {TARGET_LANGUAGE}.
-IMPORTANT REQUIREMENTS:
-1. 严格保持 Markdown 格式不变，包括标题、链接、图片引用等
-2. 仅翻译文字内容，保留所有 Markdown 语法和文件名
-   - 数学公式（行内 `$...$`、公式块 `$$...$$`）内的 LaTeX 原样保留，不要翻译、改写或删除其中任何字符
-   - 表格（Markdown `| ... |` 表格或 HTML `<table>`）保持行列结构不变，只翻译单元格中的文字
-   - 脚注：正文中的引用标记 `[^12]` 与行首的定义标记 `[^12]:` 原样保留，不要改编号、不要删除、不要移动位置，只翻译定义后面的注释文字；定义的续段保持行首四个空格的缩进
-3. 删除空链接、不必要的字符和如: 行末的'\\'。页码已由 convert.py 上游处理，不要再删除独立的数字行（可能是年份 1984、章节编号、引用编号等正文内容）。
-4. 保证格式和语义准确翻译内容自然流畅
-5. 只输出翻译后的正文内容，不要有任何说明、提示、注释或对话内容。
-6. 表达清晰简洁，不要使用复杂的句式。请严格按顺序翻译，不要跳过任何内容。
-7. 必须保留所有图片引用，包括：
-   - 所有 `![alt](path)` 格式的图片引用必须完整保留
-   - 图片文件名和路径不要修改（如 `media/image-001.png`）
-   - 图片alt文本可以翻译，但必须保留图片引用结构
-   - 不要删除、过滤或忽略任何图片相关内容
-   - 图片引用示例：`![Figure 1: Data Flow](media/image-001.png)` -> `![图1：数据流](media/image-001.png)`
-   - **原始 HTML 标签（如 `<img alt="..." />`、`<a title="...">`）必须保持合法**：翻译 `alt`、`title` 等属性值内部文本时，下列字符会破坏 HTML 结构，必须替换为安全形式（仅适用于**原始 HTML 标签的属性值内部**；普通 Markdown 正文、代码块、URL 不要主动转义）：
-
-     | 字符 | 在属性值内的危险 | 替换为 |
-     |------|---------------|--------|
-     | `"` | 闭合 `attr="..."` | 目标语言合适的弯引号（如中文 `“` `”`）或 `&quot;` |
-     | `'` | 闭合 `attr='...'` | 目标语言合适的弯引号（如中文 `‘` `’`）或 `&#39;` |
-     | `<` | 被解析为新标签 | `&lt;` |
-     | `>` | 被解析为标签结束 | `&gt;` |
-     | `&` | 被解析为实体起始（除非已是 `&xxx;`） | `&amp;` |
-
-     不要修改 `src`、`href` 等结构性属性的值，只翻译可见文本属性（`alt`、`title`）。
-
-     - 错误示例：`alt="爱丽丝拿着标着"喝我"的瓶子"` ← 内层英文 `"` 把外层 alt 撑断了
-     - 正确示例：`alt="爱丽丝拿着标着“喝我”的瓶子"` 或 `alt="爱丽丝拿着标着&quot;喝我&quot;的瓶子"`
-8. 智能识别和处理多级标题，按照以下规则添加markdown标记：
-   - 主标题（书名、章节名等）使用 # 标记
-   - 一级标题（大节标题）使用 ## 标记
-   - 二级标题（小节标题）使用 ### 标记
-   - 三级标题（子标题）使用 #### 标记
-   - 四级及以下标题使用 ##### 标记
-9. 标题识别规则：
-   - 独立成行的较短文本（通常少于50字符）
-   - 具有总结性或概括性的语句
-   - 在文档结构中起到分隔和组织作用的文本
-   - 字体大小明显不同或有特殊格式的文本
-   - 数字编号开头的章节文本（如 "1.1 概述"、"第三章"等）
-10. 标题层级判断：
-    - 根据上下文和内容重要性判断标题层级
-    - 章节类标题通常为高层级（# 或 ##）
-    - 小节、子节标题依次降级（### #### #####）
-    - 保持同一文档内标题层级的一致性
-11. 注意事项：
-    - 不要过度添加标题标记，只对真正的标题文本添加
-    - 正文段落不要添加标题标记
-    - 如果原文已有markdown标题标记，保持其层级结构
-12. {CUSTOM_INSTRUCTIONS if provided}
-13. 术语一致性：以下术语必须严格使用指定译法，不要自行变换。表格中"原文"列**或"别名"列**任一形式出现在正文中时，都必须翻译为"译文"列对应的形式。
-
-{TERM_TABLE}
-
-邻居上下文（只读，不要翻译，不要写入输出，只用于判断代词、性别、别名和跨 chunk 指代；为空则省略）:
-
-{NEIGHBOR_CONTEXT}
-
-markdown文件正文:
-
----
 
 ### 4.5. Merge Sub-Agent Meta Into Glossary (after each batch)
 

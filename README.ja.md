@@ -262,7 +262,7 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated t
 python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated title》" --cover cover.jpg --export-name "translated-title" --toc
 ```
 
-`--cover` は、指定した画像を EPUB と PDF を生成する Calibre のステップに渡します。`--toc` は本文の前に実際の目次ページを挿入し、上位 2 階層の見出しを一覧します（見出し文言は 目录/目次/목차/Contents を言語から自動選択）。PDF では各項目のページ番号も印刷し、その番号はページ割り付けを固定するためのプレースホルダー版ビルドから取得します。`--toc-levels 1`、`--toc-start "<見出し>"`、`--toc-title "<文字列>"`、`--no-toc-pages` で調整できます（PyMuPDF が無い場合も自動で番号なしになります）。`book.html` のサイドバー目次とは別物です。`--export-name` は、パイプラインの正規の成果物 `book.*` を残したまま、`translated-title.epub` のような別名のコピーを作ります。`book_doc` という名前（大文字小文字を区別しない）は予約されており、HTML の別名が `book_doc.html` を上書きしてしまうため、ビルド前に拒否されます。
+`convert.py --chunk-size` はチャンクの文字数目標（既定 6000）。大きくするとサブエージェント数が減り全体が速くなります（散文は 9000〜12000、密度の高い学術書は 6000 が目安）。`build_prompt.py --style` は翻訳スタイルのプリセットを選びます（既定 `scholarly`、ほかに `readable`、`literary`、`plain`、`bilingual`。一覧は `scripts/style.py list`）。`--cover` は、指定した画像を EPUB と PDF を生成する Calibre のステップに渡します。`--toc` は本文の前に実際の目次ページを挿入し、上位 2 階層の見出しを一覧します（見出し文言は 目录/目次/목차/Contents を言語から自動選択）。PDF では各項目のページ番号も印刷し、その番号はページ割り付けを固定するためのプレースホルダー版ビルドから取得します。`--toc-levels 1`、`--toc-start "<見出し>"`、`--toc-title "<文字列>"`、`--no-toc-pages` で調整できます（PyMuPDF が無い場合も自動で番号なしになります）。`book.html` のサイドバー目次とは別物です。`--export-name` は、パイプラインの正規の成果物 `book.*` を残したまま、`translated-title.epub` のような別名のコピーを作ります。`book_doc` という名前（大文字小文字を区別しない）は予約されており、HTML の別名が `book_doc.html` を上書きしてしまうため、ビルド前に拒否されます。
 
 マージの前に、スクリプトは次の点を検証します:
 - すべてのソースチャンクに対応する出力ファイルがあること（1:1 の対応）
@@ -291,6 +291,8 @@ python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated t
 | `scripts/merge_and_build.py` | チャンクのマージ → HTML → DOCX/EPUB/PDF |
 | `scripts/toc.py` | 本文内の目次ページ：ASCII 見出し id、点線リーダー、PDF ページ番号 |
 | `scripts/qa_chunks.py` | ビルド前の訳文チェック（空、未翻訳、OCR 残り） |
+| `scripts/style.py` | 翻訳スタイルのプリセット（実行可能なルール、`scripts/styles/*.md`） |
+| `scripts/build_prompt.py` | チャンクごとに自己完結したプロンプトを生成 |
 | `scripts/calibre_html_publish.py` | フォーマット変換用の Calibre ラッパー |
 | `scripts/template.html` | フローティング目次付きの Web 用 HTML テンプレート |
 | `scripts/template_ebook.html` | 電子書籍用 HTML テンプレート |

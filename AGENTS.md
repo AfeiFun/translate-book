@@ -17,6 +17,9 @@ translate-book is an agent skill for Codex, Claude Code, and OpenClaw that trans
 - `scripts/merge_and_build.py` — Merge translated chunks → HTML/DOCX/EPUB/PDF (`--toc` adds the in-book TOC page)
 - `scripts/toc.py` — In-book TOC page: ASCII heading ids, dotted leaders, PDF page numbers resolved from a placeholder pass
 - `scripts/qa_chunks.py` — Pre-build sanity check of translated chunks (empty/untranslated outputs, OCR leftovers)
+- `scripts/style.py` + `scripts/styles/*.md` — Translation style presets (scholarly/readable/literary/plain/bilingual) as executable rules
+- `scripts/prompt_template.md` — Canonical per-chunk prompt (rules + style + terms + neighbours + meta schema)
+- `scripts/build_prompt.py` — Renders one self-contained prompt file per chunk
 - `scripts/calibre_html_publish.py` — Calibre format conversion wrapper
 - `scripts/template.html`, `scripts/template_ebook.html` — HTML templates
 

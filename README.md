@@ -262,7 +262,7 @@ Optional output flags:
 python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated title》" --cover cover.jpg --export-name "translated-title" --toc
 ```
 
-`--cover` passes an explicit image to the EPUB and PDF Calibre steps. `--toc` inserts a real table-of-contents page before the first chapter, listing the top two heading levels (localized title: 目录/目次/목차/Contents); for PDF it also prints the page number of every entry, resolved from a first pass whose pagination is then frozen. Tune it with `--toc-levels 1`, `--toc-start "<heading>"`, `--toc-title "<text>"`, or skip the numbers with `--no-toc-pages` (also automatic when PyMuPDF is missing). Note that this is separate from the floating sidebar TOC in `book.html`. `--export-name` creates alias copies such as `translated-title.epub` while preserving the canonical `book.*` pipeline artifacts. The name `book_doc` (case-insensitive) is reserved and rejected before building because its HTML alias would overwrite `book_doc.html`.
+`--chunk-size` (on `convert.py`) is a character target, default 6000. Larger chunks mean fewer sub-agents and faster wall-clock; 9000–12000 is comfortable for prose, 6000 for dense academic text. `--style` on `build_prompt.py` picks a translation style preset (`scholarly` default, `readable`, `literary`, `plain`, `bilingual`); see `scripts/style.py list`. `--cover` passes an explicit image to the EPUB and PDF Calibre steps. `--toc` inserts a real table-of-contents page before the first chapter, listing the top two heading levels (localized title: 目录/目次/목차/Contents); for PDF it also prints the page number of every entry, resolved from a first pass whose pagination is then frozen. Tune it with `--toc-levels 1`, `--toc-start "<heading>"`, `--toc-title "<text>"`, or skip the numbers with `--no-toc-pages` (also automatic when PyMuPDF is missing). Note that this is separate from the floating sidebar TOC in `book.html`. `--export-name` creates alias copies such as `translated-title.epub` while preserving the canonical `book.*` pipeline artifacts. The name `book_doc` (case-insensitive) is reserved and rejected before building because its HTML alias would overwrite `book_doc.html`.
 
 Before merging, the script validates:
 - Every source chunk has a corresponding output file (1:1 match)
@@ -291,6 +291,8 @@ Intermediate files stay in the temp dir after the build, so a few bad passages c
 | `scripts/merge_and_build.py` | Merge chunks → HTML → DOCX/EPUB/PDF |
 | `scripts/toc.py` | In-book TOC page: ASCII heading ids, dotted leaders, PDF page numbers |
 | `scripts/qa_chunks.py` | Pre-build sanity check of translated chunks (empty, untranslated, OCR leftovers) |
+| `scripts/style.py` | Translation style presets as executable rules (`scripts/styles/*.md`) |
+| `scripts/build_prompt.py` | Render one self-contained prompt file per chunk |
 | `scripts/calibre_html_publish.py` | Calibre wrapper for format conversion |
 | `scripts/template.html` | Web HTML template with floating TOC |
 | `scripts/template_ebook.html` | Ebook HTML template |
