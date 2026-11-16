@@ -1338,5 +1338,99 @@ class CalibreHtmlzLocationTests(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.root.iterdir()), ["book.epub", "book.htmlz"])
 
 
+class HeadingSplitOptionTests(unittest.TestCase):
+    def test_no_heading_split_packs_small_chapters_up_to_target_size(self):
+        blocks = [
+            ("# Chapter 1", "heading"),
+            ("Short paragraph one.", "paragraph"),
+            ("# Chapter 2", "heading"),
+            ("Short paragraph two.", "paragraph"),
+            ("# Chapter 3", "heading"),
+            ("Short paragraph three.", "paragraph"),
+        ]
+        default_chunks = convert.merge_blocks_to_chunks(blocks, target_size=200)
+        packed_chunks = convert.merge_blocks_to_chunks(
+            blocks, target_size=200, split_on_headings=False
+        )
+        self.assertEqual(len(default_chunks), 3)
+        self.assertEqual(len(packed_chunks), 1)
+        self.assertIn("# Chapter 1", packed_chunks[0])
+        self.assertIn("# Chapter 3", packed_chunks[0])
+
+    def test_no_heading_split_moves_overflowing_chapter_intact_to_next_chunk(self):
+        # Ch1=70, Ch2=70 (both fit in 150 -> 140), Ch3=70 (140+70=210 > 150 -> moves intact to chunk 2)
+        blocks = [
+            ("# Chapter 1", "heading"),
+            ("A" * 30, "paragraph"),
+            ("B" * 29, "paragraph"),
+            ("# Chapter 2", "heading"),
+            ("C" * 30, "paragraph"),
+            ("D" * 29, "paragraph"),
+            ("# Chapter 3", "heading"),
+            ("E" * 30, "paragraph"),
+            ("F" * 29, "paragraph"),
+        ]
+        chunks = convert.merge_blocks_to_chunks(
+            blocks, target_size=150, split_on_headings=False
+        )
+        self.assertEqual(len(chunks), 2)
+        self.assertIn("# Chapter 1", chunks[0])
+        self.assertIn("# Chapter 2", chunks[0])
+        self.assertNotIn("# Chapter 3", chunks[0])
+        self.assertTrue(chunks[1].startswith("# Chapter 3"))
+        self.assertIn("F" * 29, chunks[1])
+
+    def test_no_heading_split_keeps_part_heading_attached_to_first_chapter(self):
+        blocks = [
+            ("# Part I", "heading"),
+            ("## Chapter 1", "heading"),
+            ("X" * 80, "paragraph"),
+        ]
+        chunks = convert.merge_blocks_to_chunks(
+            blocks, target_size=60, split_on_headings=False
+        )
+        self.assertEqual(len(chunks), 2)
+        self.assertEqual(chunks[0], "# Part I\n## Chapter 1")
+
+
+class JpegApp14SanitizeTests(unittest.TestCase):
+    @staticmethod
+    def _minimal_jpeg(num_components, with_app14=True):
+        soi = b"\xff\xd8"
+        app14 = b"\xff\xee\x00\x0eAdobe\x00d\x00\x00\x00\x00\x00" if with_app14 else b""
+        # SOF0: len=8+3*comp, prec=8, h=1, w=1, comp
+        sof_len = 8 + 3 * num_components
+        sof_body = bytes([8, 0, 1, 0, 1, num_components]) + b"\x01\x11\x00" * num_components
+        sof0 = b"\xff\xc0" + sof_len.to_bytes(2, "big") + sof_body
+        sos_eoi = b"\xff\xda\x00\x08\x01\x01\x00\x00\x3f\x00\x00\xff\xd9"
+        return soi + app14 + sof0 + sos_eoi
+
+    def test_strips_app14_from_grayscale_jpeg_only(self):
+        gray_with_app14 = self._minimal_jpeg(num_components=1, with_app14=True)
+        gray_clean = self._minimal_jpeg(num_components=1, with_app14=False)
+        rgb_with_app14 = self._minimal_jpeg(num_components=3, with_app14=True)
+
+        self.assertEqual(convert.strip_grayscale_jpeg_app14_bytes(gray_with_app14), gray_clean)
+        self.assertEqual(convert.strip_grayscale_jpeg_app14_bytes(rgb_with_app14), rgb_with_app14)
+        self.assertEqual(convert.strip_grayscale_jpeg_app14_bytes(PNG_BYTES), PNG_BYTES)
+
+    def test_sanitize_images_dir_cleans_grayscale_jpegs_in_place(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            img_dir = Path(tmp) / "images"
+            img_dir.mkdir()
+            gray = img_dir / "gray.jpg"
+            rgb = img_dir / "rgb.jpg"
+            png = img_dir / "pic.png"
+            gray.write_bytes(self._minimal_jpeg(1, True))
+            rgb.write_bytes(self._minimal_jpeg(3, True))
+            png.write_bytes(PNG_BYTES)
+
+            cleaned = convert.sanitize_images_dir(str(img_dir))
+            self.assertEqual(cleaned, 1)
+            self.assertEqual(gray.read_bytes(), self._minimal_jpeg(1, False))
+            self.assertEqual(rgb.read_bytes(), self._minimal_jpeg(3, True))
+            self.assertEqual(png.read_bytes(), PNG_BYTES)
+
+
 if __name__ == "__main__":
     unittest.main()

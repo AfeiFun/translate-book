@@ -14,6 +14,7 @@ import sys
 import subprocess
 import zipfile
 import shutil
+import struct
 import tempfile
 import argparse
 import base64
@@ -270,6 +271,95 @@ def _abort_on_source_cache_mismatch(status, message, temp_dir):
         print(f"Warning: {message}")
 
 
+_SOF_MARKERS = frozenset({
+    0xC0, 0xC1, 0xC2, 0xC3,
+    0xC5, 0xC6, 0xC7,
+    0xC9, 0xCA, 0xCB,
+    0xCD, 0xCE, 0xCF,
+})
+
+
+def strip_grayscale_jpeg_app14_bytes(data):
+    """Losslessly remove Adobe APP14 (0xEE) segments from 1-component grayscale JPEGs.
+
+    Single-channel grayscale JPEGs carrying an Adobe APP14 marker (often emitted
+    by Calibre/Photoshop with adobe_transform=0) trigger HTTP 400 INVALID_ARGUMENT
+    in multimodal model APIs. RGB/CMYK JPEGs and non-JPEG files are returned
+    unchanged.
+    """
+    if len(data) < 4 or data[:2] != b"\xff\xd8":
+        return data
+
+    n = len(data)
+    pos = 2
+    num_components = None
+    app14_ranges = []
+
+    while pos < n:
+        if data[pos] != 0xFF:
+            return data
+        marker_start = pos
+        while pos < n and data[pos] == 0xFF:
+            pos += 1
+        if pos >= n:
+            return data
+        marker = data[pos]
+        pos += 1
+
+        # EOI or SOS: stop parsing header markers
+        if marker in (0x00, 0xD9, 0xDA):
+            break
+        # Standalone markers without length
+        if 0xD0 <= marker <= 0xD8 or marker == 0x01:
+            continue
+
+        if pos + 2 > n:
+            return data
+        seg_len = struct.unpack(">H", data[pos:pos + 2])[0]
+        if seg_len < 2 or pos + seg_len > n:
+            return data
+
+        if marker in _SOF_MARKERS and seg_len >= 8:
+            num_components = data[pos + 7]
+        elif marker == 0xEE:
+            app14_ranges.append((marker_start, pos + seg_len))
+
+        pos += seg_len
+
+    if num_components != 1 or not app14_ranges:
+        return data
+
+    out = bytearray()
+    cursor = 0
+    for start, end in app14_ranges:
+        out.extend(data[cursor:start])
+        cursor = end
+    out.extend(data[cursor:])
+    return bytes(out)
+
+
+def sanitize_images_dir(images_dir):
+    """Strip Adobe APP14 markers from any grayscale JPEGs inside images_dir."""
+    if not images_dir or not os.path.isdir(images_dir):
+        return 0
+    cleaned_count = 0
+    for root, _, files in os.walk(images_dir):
+        for fname in sorted(files):
+            if not fname.lower().endswith((".jpg", ".jpeg")):
+                continue
+            path = os.path.join(root, fname)
+            with open(path, "rb") as f:
+                data = f.read()
+            cleaned = strip_grayscale_jpeg_app14_bytes(data)
+            if cleaned != data:
+                with open(path, "wb") as f:
+                    f.write(cleaned)
+                cleaned_count += 1
+    if cleaned_count:
+        print(f"Stripped Adobe APP14 marker from {cleaned_count} grayscale JPEG(s) in {images_dir}")
+    return cleaned_count
+
+
 def setup_temp_directory(input_file, html_file, images_dir, temp_root=None):
     """Setup temp directory with HTML and images"""
     try:
@@ -290,6 +380,7 @@ def setup_temp_directory(input_file, html_file, images_dir, temp_root=None):
             else:
                 shutil.copytree(images_dir, target_images_dir)
                 print(f"Copied images to: {target_images_dir}")
+            sanitize_images_dir(target_images_dir)
 
         return temp_dir
     except Exception as e:
@@ -955,6 +1046,8 @@ def import_markdown(md_path, temp_dir):
     embedded_count = 0
 
     def store(name, data):
+        if name.lower().endswith((".jpg", ".jpeg")):
+            data = strip_grayscale_jpeg_app14_bytes(data)
         base, ext = os.path.splitext(name)
         digest = hashlib.sha256(data).hexdigest()
         candidate, n = name, 1
@@ -1181,24 +1274,52 @@ def parse_structural_blocks(content):
     return blocks
 
 
-def merge_blocks_to_chunks(blocks, target_size=40000):
+def _heading_level(text):
+    """Return ATX heading level (1-6) for a heading block, or 6 as fallback."""
+    stripped = text.lstrip()
+    level = len(stripped) - len(stripped.lstrip('#'))
+    return level if 1 <= level <= 6 else 6
+
+
+def _section_exceeds_budget(blocks, start_idx, current_size, target_size):
+    """Return True if adding the full section at start_idx would exceed target_size."""
+    start_level = _heading_level(blocks[start_idx][0])
+    total = current_size + len(blocks[start_idx][0])
+    if total > target_size:
+        return True
+    for j in range(start_idx + 1, len(blocks)):
+        text, btype = blocks[j]
+        if btype == 'heading' and _heading_level(text) <= start_level:
+            break
+        total += len(text)
+        if total > target_size:
+            return True
+    return False
+
+
+def merge_blocks_to_chunks(blocks, target_size=40000, split_on_headings=True):
     """Merge structural blocks into chunks respecting target_size.
 
-    Prefers to split at heading boundaries. Never splits within a single
+    When split_on_headings is True, always splits at heading boundaries.
+    When split_on_headings is False, packs consecutive chapters/sections up to
+    target_size and moves an incoming chapter/section to the next chunk if it
+    would not fit in the remaining budget. Never splits within a single
     structural block unless the block itself exceeds target_size * 2.
     """
     chunks = []
     current_parts = []
     current_size = 0
+    has_body_in_chunk = False
 
     def flush():
-        nonlocal current_parts, current_size
+        nonlocal current_parts, current_size, has_body_in_chunk
         if current_parts:
             chunks.append('\n'.join(current_parts))
             current_parts = []
             current_size = 0
+            has_body_in_chunk = False
 
-    for text, btype in blocks:
+    for idx, (text, btype) in enumerate(blocks):
         block_size = len(text)
 
         # If a single block is oversized, handle degradation
@@ -1217,7 +1338,10 @@ def merge_blocks_to_chunks(blocks, target_size=40000):
 
         # Prefer to split at heading boundaries
         if btype == 'heading' and current_size > 0:
-            flush()
+            if split_on_headings:
+                flush()
+            elif has_body_in_chunk and _section_exceeds_budget(blocks, idx, current_size, target_size):
+                flush()
 
         # Would adding this block exceed target?
         if current_size + block_size > target_size and current_parts:
@@ -1225,6 +1349,8 @@ def merge_blocks_to_chunks(blocks, target_size=40000):
 
         current_parts.append(text)
         current_size += block_size
+        if btype != 'heading' and text.strip():
+            has_body_in_chunk = True
 
     flush()
     # The blank line after a final oversized block would otherwise be its own
@@ -1301,7 +1427,7 @@ def _force_split_block(text, target_size):
     return chunks
 
 
-def split_markdown_structured(md_file, temp_dir, target_size=40000):
+def split_markdown_structured(md_file, temp_dir, target_size=40000, split_on_headings=True):
     """Split markdown into structural chunks.
 
     Returns list of chunk filenames (e.g. ['chunk0001.md', ...]).
@@ -1311,7 +1437,7 @@ def split_markdown_structured(md_file, temp_dir, target_size=40000):
             content = f.read()
 
         blocks = parse_structural_blocks(content)
-        chunk_texts = merge_blocks_to_chunks(blocks, target_size)
+        chunk_texts = merge_blocks_to_chunks(blocks, target_size, split_on_headings=split_on_headings)
 
         chunk_files = []
         for i, chunk_text in enumerate(chunk_texts, 1):
@@ -1373,7 +1499,7 @@ conversion_method={conversion_method}
         return False
 
 
-def _do_split_and_manifest(temp_dir, input_md, chunk_size):
+def _do_split_and_manifest(temp_dir, input_md, chunk_size, split_on_headings=True):
     """Split markdown and create manifest. Returns chunk count or 0 on failure."""
     existing = _find_existing_chunk_files(temp_dir)
     if existing:
@@ -1382,7 +1508,7 @@ def _do_split_and_manifest(temp_dir, input_md, chunk_size):
         create_manifest(temp_dir, existing, input_md)
         return len(existing)
 
-    chunk_files = split_markdown_structured(input_md, temp_dir, chunk_size)
+    chunk_files = split_markdown_structured(input_md, temp_dir, chunk_size, split_on_headings=split_on_headings)
     if not chunk_files:
         return 0
     create_manifest(temp_dir, chunk_files, input_md)
@@ -1440,7 +1566,12 @@ def main():
     parser.add_argument("-l", "--ilang", default="auto", help="Input language (default: auto)")
     parser.add_argument("--olang", default="zh", help="Output language (default: zh)")
     parser.add_argument("--chunk-size", type=int, default=40000,
-                        help="Target chunk size in characters (default: 40000; splits also break at headings)")
+                        help="Target chunk size in characters (default: 40000; splits also break at headings unless --no-heading-split is set)")
+    parser.add_argument(
+        "--no-heading-split",
+        action="store_true",
+        help="Do not force a chunk break at headings; pack consecutive chapters/sections up to --chunk-size.",
+    )
     parser.add_argument(
         "--temp-root",
         default=None,
@@ -1504,7 +1635,9 @@ def main():
             elif not import_markdown_input(input_file, input_md, temp_dir):
                 sys.exit(1)
 
-            chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
+            chunk_count = _do_split_and_manifest(
+                temp_dir, input_md, args.chunk_size, split_on_headings=not args.no_heading_split
+            )
             if chunk_count == 0:
                 sys.exit(1)
 
@@ -1559,7 +1692,9 @@ def main():
                                                 detect_page_numbers=detect_page_numbers):
                     sys.exit(1)
 
-            chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
+            chunk_count = _do_split_and_manifest(
+                temp_dir, input_md, args.chunk_size, split_on_headings=not args.no_heading_split
+            )
             if chunk_count == 0:
                 sys.exit(1)
 
@@ -1602,7 +1737,9 @@ def main():
                                                 detect_page_numbers=detect_page_numbers):
                     sys.exit(1)
 
-            chunk_count = _do_split_and_manifest(temp_dir, input_md, args.chunk_size)
+            chunk_count = _do_split_and_manifest(
+                temp_dir, input_md, args.chunk_size, split_on_headings=not args.no_heading_split
+            )
             if chunk_count == 0:
                 sys.exit(1)
 

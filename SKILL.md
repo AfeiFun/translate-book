@@ -61,7 +61,10 @@ temp directory before translating and re-run with `--detect-page-numbers`.
 
 **Chunk size.** `--chunk-size` is a *character* target (default **40000**). Splits
 also land on structural boundaries, so a "40000" book usually comes out as one
-chunk per chapter and the largest chunk is whatever its longest chapter is.
+chunk per chapter and the largest chunk is whatever its longest chapter is. Pass
+`--no-heading-split` when a book has many short chapters/sections and you want
+consecutive sections packed up to `--chunk-size` instead (moving a whole section
+to the next chunk if adding it would exceed the budget).
 
 | Source | Recommended | Why |
 | --- | --- | --- |
@@ -441,7 +444,9 @@ required: Calibre's EPUB splitter cannot resolve non-ASCII fragment links and
 silently points every TOC entry at the first split file.
 
 If the user provided `epub_cover`, add `--cover "<epub_cover>"`. If the user
-provided `export_name`, add `--export-name "<export_name>"`.
+provided `export_name`, add `--export-name "<export_name>"`. Pass `--formats`
+(e.g., `--formats epub`) when only specific output formats from `docx,epub,pdf`
+are requested; omitting it generates all three.
 
 Keep the intermediate files. The chunks, `manifest.json`, and `run_state.json`
 are what make spot fixes and selective re-translation possible after the build

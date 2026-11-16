@@ -1008,6 +1008,24 @@ def generate_format(html_file, temp_dir, output_ext, lang_attr, cover=None):
         return None
 
 
+SUPPORTED_FORMATS = ('.docx', '.epub', '.pdf')
+
+
+def _parse_formats(formats_arg):
+    """Parse a comma-separated --formats value into normalized extensions."""
+    tokens = [t.strip().lower() for t in formats_arg.split(',') if t.strip()]
+    if not tokens:
+        raise ValueError("--formats must specify at least one output format (docx, epub, pdf)")
+    result = []
+    for token in tokens:
+        ext = token if token.startswith('.') else f'.{token}'
+        if ext not in SUPPORTED_FORMATS:
+            raise ValueError(f"Unsupported format '{token}' in --formats (allowed: docx, epub, pdf)")
+        if ext not in result:
+            result.append(ext)
+    return result
+
+
 def generate_formats(temp_dir, lang_attr, cover=None, formats=('.docx', '.epub', '.pdf')):
     """Generate DOCX, EPUB, and PDF with result summary"""
     print("=== Generating output formats ===")
@@ -1166,6 +1184,8 @@ def main():
                         help='Heading text where the TOC starts (default: the second level-1 heading)')
     parser.add_argument('--no-toc-pages', action='store_true',
                         help='Skip PDF page numbers in the TOC (also when PyMuPDF is unavailable)')
+    parser.add_argument('--formats', default='docx,epub,pdf',
+                        help='Comma-separated output formats to generate (default: docx,epub,pdf)')
     parser.add_argument('--cleanup', action='store_true', help='Remove intermediate artifacts after successful build')
 
     args = parser.parse_args()
@@ -1189,6 +1209,12 @@ def main():
         except ValueError as e:
             print(f"Error: {e}")
             sys.exit(1)
+
+    try:
+        formats = _parse_formats(args.formats)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
     # Load config as base, CLI args override
     config = load_config(temp_dir)
@@ -1223,16 +1249,17 @@ def main():
         toc_inserted, toc_pdf_built = insert_book_toc(
             temp_dir, lang_code, lang_cfg['lang_attr'], cover=cover,
             title=args.toc_title, levels=levels, start_heading=args.toc_start,
-            page_numbers=not args.no_toc_pages,
+            page_numbers=(not args.no_toc_pages and '.pdf' in formats),
         )
 
     # Step 7: Generate formats
-    formats = ['.docx', '.epub', '.pdf']
-    if toc_pdf_built:
+    if toc_pdf_built and '.pdf' in formats:
         # The numbered PDF was already built from the TOC-paginated HTML; the
         # on-disk HTML now holds the link-only TOC, so rebuilding would lose it.
         formats.remove('.pdf')
-    all_formats_ok = generate_formats(temp_dir, lang_cfg['lang_attr'], cover=cover, formats=tuple(formats))
+    all_formats_ok = True
+    if formats:
+        all_formats_ok = generate_formats(temp_dir, lang_cfg['lang_attr'], cover=cover, formats=tuple(formats))
 
     if export_name:
         if all_formats_ok:
