@@ -63,6 +63,45 @@ class CheckChunkTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(qa_chunks.main([tmp]), 0)
 
+    def test_count_markdown_assets_and_book_conservation(self):
+        sample = (
+            "![图 1](images/a.png)\n"
+            "<img src=\"images/b.jpg\" alt=\"b\">\n"
+            "```md\n"
+            "| fake | table |\n"
+            "| --- | --- |\n"
+            "```\n\n"
+            "| 列1 | 列2 |\n"
+            "| --- | ---: |\n"
+            "| A | 1 |\n\n"
+            "<table><thead><tr><th>X</th></tr></thead></table>\n"
+        )
+        imgs, tbls = qa_chunks.count_markdown_assets(sample)
+        self.assertEqual(imgs, 2)
+        self.assertEqual(tbls, 2)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(os.path.join(tmp, "chunk0001.md")).write_text("# T\n", encoding="utf-8")
+            Path(os.path.join(tmp, "output_chunk0001.md")).write_text("只有一段中文。\n", encoding="utf-8")
+            Path(os.path.join(tmp, "pdf_assets_audit.json")).write_text(
+                json.dumps({
+                    "expected_figures": 1,
+                    "expected_tables": 1,
+                    "vector_figure_ids": ["2.1"],
+                    "tables": [{"id": "3.1", "pages": [5]}],
+                }),
+                encoding="utf-8",
+            )
+            _, findings = qa_chunks.run(tmp)
+            self.assertIn("_book", findings)
+            joined = "; ".join(findings["_book"])
+            self.assertIn("missing figures", joined)
+            self.assertIn("missing tables", joined)
+
+            Path(os.path.join(tmp, "output_chunk0001.md")).write_text(sample + "\n中文内容。\n", encoding="utf-8")
+            _, findings_ok = qa_chunks.run(tmp)
+            self.assertNotIn("_book", findings_ok)
+
 
 if __name__ == "__main__":
     unittest.main()

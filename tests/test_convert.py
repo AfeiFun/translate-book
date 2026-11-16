@@ -1432,5 +1432,50 @@ class JpegApp14SanitizeTests(unittest.TestCase):
             self.assertEqual(png.read_bytes(), PNG_BYTES)
 
 
+class PdfAssetAuditTests(unittest.TestCase):
+    def test_audit_and_extract_vector_figures(self):
+        fitz = convert._import_pymupdf()
+        if fitz is None:
+            self.skipTest("PyMuPDF not installed")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pdf_path = os.path.join(tmp, "sample.pdf")
+            doc = fitz.open()
+            p1 = doc.new_page(width=400, height=500)
+            p1.insert_text((72, 75), "Figure 2.1: Payoff matrix", fontsize=11)
+            # Draw a 2x2 grid (4+ segments -> vector figure)
+            p1.draw_rect(fitz.Rect(140, 100, 260, 180))
+            p1.draw_line((200, 100), (200, 180))
+            p1.draw_line((140, 140), (260, 140))
+            p1.insert_text((100, 125), "Player A", fontsize=10)
+            p1.insert_text((72, 230), "Table 2.1: Summary statistics", fontsize=11)
+            p2 = doc.new_page(width=400, height=500)
+            p2.insert_text((72, 75), "Table 2.1: (continued)", fontsize=11)
+            p2.insert_text((72, 120), "Table 2.1 demonstrates the main effect in prose.", fontsize=11)
+            doc.save(pdf_path)
+            doc.close()
+
+            audit = convert.audit_pdf_assets(pdf_path)
+            self.assertEqual(audit["expected_figures"], 1)
+            self.assertEqual(audit["vector_figure_ids"], ["2.1"])
+            self.assertEqual(audit["expected_tables"], 1)
+            self.assertEqual(audit["tables"][0]["pages"], [1, 2])
+
+            img_dir = os.path.join(tmp, "images")
+            extracted = convert.extract_pdf_vector_figures(pdf_path, img_dir, audit)
+            self.assertEqual(len(extracted), 1)
+            self.assertEqual(extracted[0]["rel_path"], "images/fig_2_1.png")
+            self.assertTrue(os.path.isfile(os.path.join(img_dir, "fig_2_1.png")))
+
+            md_path = os.path.join(tmp, "input.md")
+            Path(md_path).write_text("Intro\n\nFigure 2.1: Payoff matrix\n\nMore text\n", encoding="utf-8")
+            inserted = convert.inject_vector_figures_into_markdown(md_path, extracted)
+            self.assertEqual(inserted, 1)
+            md_text = Path(md_path).read_text(encoding="utf-8")
+            self.assertIn("![Figure 2.1](images/fig_2_1.png)\n\nFigure 2.1: Payoff matrix", md_text)
+            # Idempotent on second call
+            self.assertEqual(convert.inject_vector_figures_into_markdown(md_path, extracted), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

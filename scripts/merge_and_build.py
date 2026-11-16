@@ -336,7 +336,26 @@ def natural_sort_key(text):
 # Step 4: Merge translated markdown files
 # =============================================================================
 
-def merge_markdown_files(temp_dir):
+def _validate_book_assets(temp_dir, allow_missing=False):
+    """Fail build when pdf_assets_audit.json reports missing translated figures or tables."""
+    from qa_chunks import check_book_assets
+    findings = check_book_assets(temp_dir)
+    if not findings:
+        return True
+    if allow_missing:
+        print("\n=== Book asset conservation warning (--allow-missing-assets) ===")
+        for item in findings:
+            print(f"WARNING: {item}")
+        return True
+    print("\n=== Book asset conservation check failed ===")
+    for item in findings:
+        print(f"ERROR: {item}")
+    print("  fix: extract/reconstruct the missing figures or tables in output_chunk*.md, "
+          "or pass --allow-missing-assets to override")
+    return False
+
+
+def merge_markdown_files(temp_dir, allow_missing_assets=False):
     """Merge all translated output files into output.md"""
     print("=== Merging translated markdown files ===")
 
@@ -345,10 +364,11 @@ def merge_markdown_files(temp_dir):
     # Always validate manifest, even if output.md exists (catch stale/corrupt outputs)
     ok, ordered_files, warnings = validate_for_merge(temp_dir)
 
-    # Image and footnote validation run unconditionally — bad chunks invalidate any cached output.md
+    # Image, footnote, and PDF asset checks run unconditionally
     images_ok = _validate_chunk_images(temp_dir)
     footnotes_ok = _validate_chunk_footnotes(temp_dir)
-    if not (images_ok and footnotes_ok):
+    assets_ok = _validate_book_assets(temp_dir, allow_missing=allow_missing_assets)
+    if not (images_ok and footnotes_ok and assets_ok):
         if os.path.exists(output_md):
             print("Removing stale output.md (built from chunks that failed validation)")
             os.remove(output_md)
@@ -1186,6 +1206,8 @@ def main():
                         help='Skip PDF page numbers in the TOC (also when PyMuPDF is unavailable)')
     parser.add_argument('--formats', default='docx,epub,pdf',
                         help='Comma-separated output formats to generate (default: docx,epub,pdf)')
+    parser.add_argument('--allow-missing-assets', action='store_true',
+                        help='Allow build to continue even if pdf_assets_audit.json detects missing figures or tables')
     parser.add_argument('--cleanup', action='store_true', help='Remove intermediate artifacts after successful build')
 
     args = parser.parse_args()
@@ -1232,7 +1254,7 @@ def main():
     print(f"Language: {lang_code} (attr: {lang_cfg['lang_attr']})")
 
     # Step 4: Merge
-    if not merge_markdown_files(temp_dir):
+    if not merge_markdown_files(temp_dir, allow_missing_assets=args.allow_missing_assets):
         sys.exit(1)
 
     # Step 5: Convert to HTML

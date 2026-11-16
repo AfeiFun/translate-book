@@ -672,6 +672,24 @@ class ImageValidationTests(unittest.TestCase):
             sanity_ok, sanity_out = self._run_html_sanity(str(html_file))
             self.assertTrue(sanity_ok, msg=sanity_out)
 
+    def test_validate_book_assets_blocks_missing_unless_allowed(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(os.path.join(tmp, "chunk0001.md")).write_text("# T\n", encoding="utf-8")
+            Path(os.path.join(tmp, "output_chunk0001.md")).write_text("仅有中文正文。\n", encoding="utf-8")
+            Path(os.path.join(tmp, "pdf_assets_audit.json")).write_text(
+                json.dumps({
+                    "expected_figures": 1,
+                    "expected_tables": 1,
+                    "vector_figure_ids": ["2.1"],
+                    "tables": [{"id": "3.1", "pages": [5]}],
+                }),
+                encoding="utf-8",
+            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertFalse(merge_and_build._validate_book_assets(tmp, allow_missing=False))
+                self.assertTrue(merge_and_build._validate_book_assets(tmp, allow_missing=True))
+
 
 if __name__ == "__main__":
     unittest.main()

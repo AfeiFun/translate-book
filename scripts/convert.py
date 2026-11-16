@@ -388,6 +388,269 @@ def setup_temp_directory(input_file, html_file, images_dir, temp_root=None):
         return None
 
 
+_PDF_FIGURE_CAPTION_RE = re.compile(
+    r"^(?:Figure|Fig\.?)\s+(\d+(?:\.\d+)*)(?:\s*([:\-—]|\.(?=\s|$))\s*(.*)|\s*)$"
+)
+_PDF_TABLE_CAPTION_RE = re.compile(
+    r"^Table\s+(\d+(?:\.\d+)*)(?:\s*([:\-—]|\.(?=\s|$))\s*(.*)|\s*)$"
+)
+_PDF_CONTINUED_RE = re.compile(r"^\(?continued\)?\.?$", re.I)
+
+
+def _import_pymupdf():
+    """Import PyMuPDF quietly when installed, returning None otherwise."""
+    try:
+        import pymupdf
+        return pymupdf
+    except ImportError:
+        try:
+            import fitz
+            return fitz
+        except ImportError:
+            return None
+
+
+def _is_figure_drawing(rect, page_height):
+    """Return True if a PDF drawing rect looks like part of a diagram (not a page rule)."""
+    if rect.width <= 4 and rect.height <= 4:
+        return False
+    # Thin horizontal rules near top/bottom margins are running headers or footnote dividers.
+    if rect.height < 2.0 and (rect.y0 < 60 or rect.y0 > page_height - 95):
+        return False
+    return True
+
+
+def audit_pdf_assets(pdf_path):
+    """Scan a PDF with PyMuPDF for figures (raster vs vector) and tables.
+
+    Returns an audit dictionary, or None if PyMuPDF is unavailable or input is not a PDF.
+    """
+    if not pdf_path or os.path.splitext(pdf_path)[1].lower() != ".pdf":
+        return None
+    fitz = _import_pymupdf()
+    if fitz is None:
+        return None
+
+    figures_by_id = {}
+    tables_by_id = {}
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception:
+        return None
+    with doc:
+        page_count = len(doc)
+        for page_idx, page in enumerate(doc, 1):
+            text = page.get_text("text")
+            imgs = page.get_images(full=True)
+            drawings = [
+                d for d in page.get_drawings()
+                if _is_figure_drawing(d["rect"], page.rect.height)
+            ]
+            for raw_line in text.splitlines():
+                line = raw_line.strip()
+                if not line:
+                    continue
+                fm = _PDF_FIGURE_CAPTION_RE.match(line)
+                if fm:
+                    fig_id = fm.group(1)
+                    rest = (fm.group(3) or "").strip()
+                    if fig_id not in figures_by_id and not _PDF_CONTINUED_RE.match(rest):
+                        kind = "raster" if imgs else ("vector" if len(drawings) >= 3 else "unknown")
+                        figures_by_id[fig_id] = {
+                            "id": fig_id,
+                            "page": page_idx,
+                            "caption": line,
+                            "kind": kind,
+                        }
+                    continue
+                tm = _PDF_TABLE_CAPTION_RE.match(line)
+                if tm:
+                    tbl_id = tm.group(1)
+                    rest = (tm.group(3) or "").strip()
+                    if tbl_id not in tables_by_id:
+                        tables_by_id[tbl_id] = {
+                            "id": tbl_id,
+                            "pages": [page_idx],
+                            "caption": line,
+                        }
+                    elif page_idx not in tables_by_id[tbl_id]["pages"]:
+                        tables_by_id[tbl_id]["pages"].append(page_idx)
+
+    figures = list(figures_by_id.values())
+    tables = list(tables_by_id.values())
+    vector_ids = [f["id"] for f in figures if f["kind"] == "vector"]
+    return {
+        "pdf_file": os.path.basename(pdf_path),
+        "page_count": page_count,
+        "figures": figures,
+        "tables": tables,
+        "vector_figure_ids": vector_ids,
+        "expected_figures": len(figures),
+        "expected_tables": len(tables),
+    }
+
+
+def _find_caption_rect(page, fitz, fig_id):
+    """Locate the bounding box of the Figure <id> caption on a PDF page."""
+    pat = re.compile(rf"^(?:Figure|Fig\.?)\s+{re.escape(fig_id)}\b")
+    for b in page.get_text("dict").get("blocks", []):
+        if b.get("type") != 0:
+            continue
+        for ln in b.get("lines", []):
+            txt = "".join(s.get("text", "") for s in ln.get("spans", [])).strip()
+            if pat.match(txt):
+                return fitz.Rect(ln["bbox"])
+    return None
+
+
+def _compute_vector_figure_crop(page, fitz, cap_rect):
+    """Compute a tight clip rectangle around a vector diagram and its short labels."""
+    draw_rects = [
+        d["rect"] for d in page.get_drawings()
+        if _is_figure_drawing(d["rect"], page.rect.height)
+    ]
+    if not draw_rects:
+        return None
+
+    union = fitz.Rect(draw_rects[0])
+    for r in draw_rects[1:]:
+        union |= r
+
+    # Include short non-prose labels (axis titles, legend, node/cell labels) near the drawing.
+    page_w, page_h = page.rect.width, page.rect.height
+    min_y = 55.0
+    max_y = page_h - 60.0
+    if cap_rect is not None:
+        if cap_rect.y1 <= union.y0 + 12:
+            min_y = max(min_y, cap_rect.y1 + 2.0)
+        elif cap_rect.y0 >= union.y1 - 12:
+            max_y = min(max_y, cap_rect.y0 - 2.0)
+
+    search = fitz.Rect(
+        max(10.0, union.x0 - 80.0),
+        max(min_y, union.y0 - 38.0),
+        min(page_w - 10.0, union.x1 + 80.0),
+        min(max_y, union.y1 + 38.0),
+    )
+    expanded = fitz.Rect(union)
+    for b in page.get_text("dict").get("blocks", []):
+        if b.get("type") != 0:
+            continue
+        for ln in b.get("lines", []):
+            lr = fitz.Rect(ln["bbox"])
+            if cap_rect is not None and lr.intersects(cap_rect):
+                continue
+            if not lr.intersects(search):
+                continue
+            txt = "".join(s.get("text", "") for s in ln.get("spans", [])).strip()
+            if not txt:
+                continue
+            # Skip full-width running prose lines above/below the figure.
+            if lr.width > page_w * 0.60 and len(txt) > 42:
+                continue
+            expanded |= lr
+
+    return fitz.Rect(
+        max(8.0, expanded.x0 - 8.0),
+        max(min_y, expanded.y0 - 6.0),
+        min(page_w - 8.0, expanded.x1 + 8.0),
+        min(max_y, expanded.y1 + 6.0),
+    )
+
+
+def extract_pdf_vector_figures(pdf_path, images_dir, audit, dpi=300):
+    """Render vector-only PDF figures to PNG files inside images_dir."""
+    if not audit or not audit.get("vector_figure_ids"):
+        return []
+    fitz = _import_pymupdf()
+    if fitz is None:
+        return []
+
+    os.makedirs(images_dir, exist_ok=True)
+    extracted = []
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception:
+        return []
+    with doc:
+        for fig in audit["figures"]:
+            if fig.get("kind") != "vector":
+                continue
+            page = doc[fig["page"] - 1]
+            cap_rect = _find_caption_rect(page, fitz, fig["id"])
+            crop_rect = _compute_vector_figure_crop(page, fitz, cap_rect)
+            if crop_rect is None or crop_rect.width < 10 or crop_rect.height < 10:
+                continue
+            fname = f"fig_{fig['id'].replace('.', '_')}.png"
+            out_path = os.path.join(images_dir, fname)
+            pix = page.get_pixmap(dpi=dpi, clip=crop_rect, alpha=False)
+            pix.save(out_path)
+            extracted.append({
+                "id": fig["id"],
+                "page": fig["page"],
+                "caption": fig["caption"],
+                "rel_path": f"images/{fname}",
+            })
+    return extracted
+
+
+def inject_vector_figures_into_markdown(md_file, extracted_figures):
+    """Insert Markdown image links above matching Figure captions when missing."""
+    if not extracted_figures or not os.path.exists(md_file):
+        return 0
+    with open(md_file, "r", encoding="utf-8") as f:
+        lines = f.read().splitlines(keepends=True)
+
+    full_text = "".join(lines)
+    inserted = 0
+    for fig in extracted_figures:
+        rel_path = fig["rel_path"]
+        if rel_path in full_text:
+            continue
+        pat = re.compile(rf"^\s*(?:Figure|Fig\.?)\s+{re.escape(fig['id'])}\b", re.I)
+        for idx, line in enumerate(lines):
+            if pat.match(line):
+                lines.insert(idx, f"![Figure {fig['id']}]({rel_path})\n\n")
+                full_text = "".join(lines)
+                inserted += 1
+                break
+
+    if inserted:
+        with open(md_file, "w", encoding="utf-8") as f:
+            f.write("".join(lines))
+        print(f"Injected {inserted} vector figure image(s) into {os.path.basename(md_file)}")
+    return inserted
+
+
+def _write_pdf_assets_audit(temp_dir, audit, extracted_figures=None):
+    """Write pdf_assets_audit.json and print actionable warnings when tables/vector figures exist."""
+    if not audit:
+        return
+    payload = dict(audit)
+    if extracted_figures:
+        payload["extracted_vector_figures"] = extracted_figures
+    audit_path = os.path.join(temp_dir, "pdf_assets_audit.json")
+    with open(audit_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+    vec_ids = audit.get("vector_figure_ids", [])
+    tbls = audit.get("tables", [])
+    if vec_ids or tbls:
+        print(
+            f"PDF asset audit: {audit['expected_figures']} figure(s) "
+            f"({len(vec_ids)} vector-only: {', '.join(vec_ids) or 'none'}), "
+            f"{audit['expected_tables']} table(s) -> {os.path.basename(audit_path)}"
+        )
+        if tbls:
+            tbl_desc = ", ".join(
+                f"Table {t['id']} (p.{','.join(str(p) for p in t['pages'])})" for t in tbls
+            )
+            print(
+                f"  WARNING: Calibre HTMLZ often flattens PDF tables into separate lines. "
+                f"Verify/reconstruct tables before final build: {tbl_desc}"
+            )
+
+
 # =============================================================================
 # Structural cleanup on pandoc's JSON AST (Calibre HTML -> Markdown)
 # =============================================================================
@@ -1553,6 +1816,21 @@ def _abort_on_strip_cache_conflict(blockers, temp_dir):
     sys.exit(1)
 
 
+def _process_pdf_assets(pdf_path, temp_dir, input_md, extract_vectors=True):
+    """Audit PDF figures/tables and optionally extract vector figures into input_md."""
+    audit = audit_pdf_assets(pdf_path)
+    if not audit:
+        return None
+    extracted = []
+    if extract_vectors and audit.get("vector_figure_ids") and not _find_existing_chunk_files(temp_dir):
+        extracted = extract_pdf_vector_figures(
+            pdf_path, os.path.join(temp_dir, "images"), audit
+        )
+        inject_vector_figures_into_markdown(input_md, extracted)
+    _write_pdf_assets_audit(temp_dir, audit, extracted)
+    return audit
+
+
 def main():
     """Main conversion function"""
     parser = argparse.ArgumentParser(
@@ -1587,6 +1865,11 @@ def main():
         action="store_true",
         help="Drop detected page-number lines from EPUB/DOCX too. By default only "
              "PDF input is cleaned this way; EPUB/DOCX keep every standalone number.",
+    )
+    parser.add_argument(
+        "--no-extract-vector-figures",
+        action="store_true",
+        help="Do not auto-crop vector-only PDF figures into images/ before splitting.",
     )
 
     args = parser.parse_args()
@@ -1634,6 +1917,10 @@ def main():
                 print("Skipping Markdown import - input.md already exists")
             elif not import_markdown_input(input_file, input_md, temp_dir):
                 sys.exit(1)
+
+            sibling_pdf = os.path.splitext(input_file)[0] + ".pdf"
+            if os.path.exists(sibling_pdf) and not os.path.exists(os.path.join(temp_dir, "pdf_assets_audit.json")):
+                _write_pdf_assets_audit(temp_dir, audit_pdf_assets(sibling_pdf))
 
             chunk_count = _do_split_and_manifest(
                 temp_dir, input_md, args.chunk_size, split_on_headings=not args.no_heading_split
@@ -1691,6 +1978,11 @@ def main():
                                                 strip_page_numbers=args.strip_page_numbers,
                                                 detect_page_numbers=detect_page_numbers):
                     sys.exit(1)
+                if file_ext == '.pdf':
+                    _process_pdf_assets(
+                        input_file, temp_dir, input_md,
+                        extract_vectors=not args.no_extract_vector_figures,
+                    )
 
             chunk_count = _do_split_and_manifest(
                 temp_dir, input_md, args.chunk_size, split_on_headings=not args.no_heading_split
@@ -1736,6 +2028,11 @@ def main():
                                                 strip_page_numbers=args.strip_page_numbers,
                                                 detect_page_numbers=detect_page_numbers):
                     sys.exit(1)
+                if file_ext == '.pdf':
+                    _process_pdf_assets(
+                        input_file, temp_dir, input_md,
+                        extract_vectors=not args.no_extract_vector_figures,
+                    )
 
             chunk_count = _do_split_and_manifest(
                 temp_dir, input_md, args.chunk_size, split_on_headings=not args.no_heading_split

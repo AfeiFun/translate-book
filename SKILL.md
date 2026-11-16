@@ -86,7 +86,14 @@ This creates a `{filename}_temp/` directory containing:
 - `chunk0001.md`, `chunk0002.md`, ... — source chunks for translation
 - `manifest.json` — chunk manifest for tracking and validation
 - `source_fingerprint.json` — SHA-256 identity of the source bytes this temp dir was built from
+- `pdf_assets_audit.json` (PDF input when PyMuPDF is installed) — inventory of `Figure` (raster vs vector) and `Table` entries detected in the source PDF
 - `config.txt` — pipeline configuration with metadata
+
+For PDF input with PyMuPDF installed, `convert.py` audits figures and tables,
+automatically crops vector-only figures (`images/fig_*.png`) into `input.md`
+before splitting (disable with `--no-extract-vector-figures`), and warns when
+`Table` captions are present so flattened tables can be reconstructed from PDF
+coordinates before building.
 
 If `convert.py` aborts because the temp dir was created from different source
 bytes, do not reuse it — delete the temp directory or pass a fresh
@@ -378,7 +385,10 @@ python3 {baseDir}/scripts/qa_chunks.py "<temp_dir>"
 
 It exits non-zero and lists the offending chunks. Treat it as a checklist, not a
 court: a Latin-heavy chunk in a book of quotations can be legitimate, but "no CJK
-at all" or "missing output" always means the sub-agent failed.
+at all" or "missing output" always means the sub-agent failed. When
+`pdf_assets_audit.json` is present, `qa_chunks.py` and `merge_and_build.py` also
+enforce figure/table count conservation against the original PDF (pass
+`--allow-missing-assets` to `merge_and_build.py` only to override intentionally).
 
 Then run the meta-merge observability snapshot:
 

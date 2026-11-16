@@ -21,6 +21,11 @@ import sys
 
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]")
 LATIN_RE = re.compile(r"[A-Za-z]")
+_IMG_REF_RE = re.compile(r"!\[[^\]]*\]\([^)]+\)|<img\b[^>]*>", re.I)
+_HTML_TABLE_RE = re.compile(r"<table\b", re.I)
+_MD_TABLE_SEP_RE = re.compile(
+    r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+(?:\s*:?-{3,}:?\s*)?\|?\s*$"
+)
 
 
 def _load_manifest(temp_dir):
@@ -76,6 +81,76 @@ def check_chunk(path, source_path=None):
     return problems
 
 
+def count_markdown_assets(text):
+    """Return (image_count, table_count) across Markdown and raw HTML blocks."""
+    images = len(_IMG_REF_RE.findall(text))
+    html_tables = len(_HTML_TABLE_RE.findall(text))
+    md_tables = 0
+    in_fence = False
+    prev_was_table_line = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence = not in_fence
+            prev_was_table_line = False
+            continue
+        if in_fence:
+            continue
+        if prev_was_table_line and _MD_TABLE_SEP_RE.match(line):
+            md_tables += 1
+        prev_was_table_line = "|" in line and bool(stripped)
+    return images, html_tables + md_tables
+
+
+def check_book_assets(temp_dir):
+    """Compare translated outputs against pdf_assets_audit.json when present."""
+    audit_path = os.path.join(temp_dir, "pdf_assets_audit.json")
+    if not os.path.exists(audit_path):
+        return []
+    try:
+        with open(audit_path, encoding="utf-8") as fh:
+            audit = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"unreadable pdf_assets_audit.json: {exc}"]
+
+    manifest = _load_manifest(temp_dir)
+    if manifest:
+        out_paths = [os.path.join(temp_dir, f"output_{c['id']}.md") for c in manifest.get("chunks", [])]
+    else:
+        out_paths = sorted(glob.glob(os.path.join(temp_dir, "output_chunk*.md")))
+
+    combined_parts = []
+    for p in out_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, encoding="utf-8", errors="replace") as fh:
+                    combined_parts.append(fh.read())
+            except OSError:
+                continue
+    if not combined_parts:
+        return []
+
+    actual_images, actual_tables = count_markdown_assets("\n\n".join(combined_parts))
+    findings = []
+    exp_figs = int(audit.get("expected_figures", 0) or 0)
+    exp_tbls = int(audit.get("expected_tables", 0) or 0)
+    if exp_figs and actual_images < exp_figs:
+        vec_ids = audit.get("vector_figure_ids") or []
+        hint = f" (vector figures in PDF: {', '.join(vec_ids)})" if vec_ids else ""
+        findings.append(
+            f"missing figures: found {actual_images} image(s) in translated chunks, "
+            f"PDF audit expected {exp_figs}{hint}"
+        )
+    if exp_tbls and actual_tables < exp_tbls:
+        tbl_ids = [t.get("id", "?") for t in audit.get("tables", [])]
+        hint = f" (PDF tables: {', '.join(tbl_ids)})" if tbl_ids else ""
+        findings.append(
+            f"missing tables: found {actual_tables} table(s) in translated chunks, "
+            f"PDF audit expected {exp_tbls}{hint}"
+        )
+    return findings
+
+
 def run(temp_dir, strict=False):
     manifest = _load_manifest(temp_dir)
     if manifest:
@@ -97,6 +172,10 @@ def run(temp_dir, strict=False):
             problems.append("missing meta file")
         if problems:
             findings[cid] = problems
+
+    book_findings = check_book_assets(temp_dir)
+    if book_findings:
+        findings["_book"] = book_findings
     return chunk_ids, findings
 
 
