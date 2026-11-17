@@ -77,6 +77,17 @@ class ParseAndStitchTests(unittest.TestCase):
             self.assertIn("![Figure 6-1](images/p0123_fig1.png)", md)
             self.assertEqual(audit["expected_figures"], 1)
 
+    def test_ignores_lone_fullpage_box_on_blank_page(self):
+        raw = "<|det|>image [0, 0, 999, 999]<|/det|>\n"
+        parsed = ocr_unlimited.parse_unlimited_ocr_output(raw)
+        with tempfile.TemporaryDirectory() as tmp:
+            page_png = os.path.join(tmp, "blank.png")
+            Image.new("RGB", (800, 1000), (255, 255, 255)).save(page_png)
+            img_dir = os.path.join(tmp, "images")
+            cropped = ocr_unlimited.crop_page_figures(page_png, parsed, img_dir, 4)
+            self.assertEqual(cropped, [])
+            self.assertFalse(os.path.exists(os.path.join(img_dir, "p0004_fig1.png")))
+
 
 class ScannedPdfDetectionTests(unittest.TestCase):
     def test_detects_scanned_vs_text_pdf(self):

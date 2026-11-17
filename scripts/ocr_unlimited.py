@@ -196,6 +196,12 @@ def crop_page_figures(page_img_path, parsed_page, images_dir, page_num):
     x1 = max(b[2] for b in img_boxes)
     y1 = max(b[3] for b in img_boxes)
 
+    # Blank verso/flyleaf scans occasionally cause the VLM to emit a single
+    # full-page `[0, 0, 999, 999]` image box without any text or captions.
+    non_img_blocks = [b for b in (parsed_page.get("blocks") or []) if b.get("kind") != "image"]
+    if len(img_boxes) == 1 and (x1 - x0 >= 950 and y1 - y0 >= 950) and not non_img_blocks:
+        return []
+
     # Check if a Figure caption sits just above y0; if sub-labels like "Star"/"Wheel"
     # lie between caption.y1 and y0, extend y0 slightly upward without touching the main caption.
     cap_bboxes = parsed_page.get("caption_bboxes") or []
