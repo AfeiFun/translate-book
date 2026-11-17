@@ -651,6 +651,75 @@ def _write_pdf_assets_audit(temp_dir, audit, extracted_figures=None):
             )
 
 
+def is_scanned_pdf(pdf_path, sample_pages=12):
+    """Return True when a PDF is largely full-page scanned images (with or without hidden OCR)."""
+    if not pdf_path or os.path.splitext(pdf_path)[1].lower() != ".pdf":
+        return False
+    fitz = _import_pymupdf()
+    if fitz is None:
+        return False
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception:
+        return False
+    with doc:
+        n = len(doc)
+        if n == 0:
+            return False
+        step = max(1, n // sample_pages)
+        indices = list(range(0, n, step))[:sample_pages]
+        full_image_pages = 0
+        for idx in indices:
+            page = doc[idx]
+            page_area = abs(page.rect.width * page.rect.height) or 1.0
+            imgs = page.get_images(full=True)
+            covers_page = False
+            for info in imgs:
+                for bbox in page.get_image_rects(info[0]):
+                    if (abs(bbox.width * bbox.height) / page_area) >= 0.65:
+                        covers_page = True
+                        break
+                if covers_page:
+                    break
+            if covers_page:
+                full_image_pages += 1
+        return full_image_pages >= max(1, int(len(indices) * 0.75))
+
+
+def _run_unlimited_ocr(pdf_path, temp_dir, input_md, pages=None):
+    """Run scripts/ocr_unlimited.py to convert a scanned PDF into Markdown + images/."""
+    import ocr_unlimited
+
+    ocr_py = ocr_unlimited.find_ocr_python()
+    if not ocr_py:
+        raise RuntimeError(
+            "Unlimited-OCR requires Python with mlx-vlm and pymupdf "
+            "(checked $TRANSLATE_BOOK_OCR_PYTHON, current python, and ~/.local/share/translate-book-ocr-venv)."
+        )
+
+    os.makedirs(temp_dir, exist_ok=True)
+    images_dir = os.path.join(temp_dir, "images")
+    work_dir = os.path.join(temp_dir, "ocr_pages")
+    audit_path = os.path.join(temp_dir, "pdf_assets_audit.json")
+    ocr_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ocr_unlimited.py")
+
+    cmd = [
+        ocr_py, ocr_script, pdf_path,
+        "-o", input_md,
+        "--images-dir", images_dir,
+        "--work-dir", work_dir,
+        "--audit-json", audit_path,
+    ]
+    if pages:
+        cmd.extend(["--pages", pages])
+
+    print(f"Running Unlimited-OCR with {ocr_py}...")
+    res = subprocess.run(cmd)
+    if res.returncode != 0:
+        raise RuntimeError(f"ocr_unlimited.py failed with exit code {res.returncode}")
+    sanitize_images_dir(images_dir)
+
+
 # =============================================================================
 # Structural cleanup on pandoc's JSON AST (Calibre HTML -> Markdown)
 # =============================================================================
@@ -1871,6 +1940,17 @@ def main():
         action="store_true",
         help="Do not auto-crop vector-only PDF figures into images/ before splitting.",
     )
+    parser.add_argument(
+        "--ocr",
+        choices=["none", "unlimited"],
+        default="none",
+        help="For scanned PDFs, bypass Calibre and extract Markdown + tables + figures via local OCR (default: none).",
+    )
+    parser.add_argument(
+        "--ocr-pages",
+        default=None,
+        help="Optional 1-based page range when --ocr unlimited is active (e.g. 1-20).",
+    )
 
     args = parser.parse_args()
     input_file = args.input_file
@@ -1895,6 +1975,11 @@ def main():
 
     if is_markdown:
         print("=== Markdown Import (no Calibre) ===")
+    elif args.ocr == "unlimited":
+        if file_ext != '.pdf':
+            print("Error: --ocr unlimited is only supported for PDF input.")
+            sys.exit(1)
+        print("=== Scanned PDF Conversion via Unlimited-OCR ===")
     else:
         print("=== File Conversion via Calibre HTMLZ ===")
     print(f"Input file: {input_file}")
@@ -1908,6 +1993,38 @@ def main():
         _abort_on_source_cache_mismatch(
             *check_source_cache(temp_dir, current_fingerprint), temp_dir=temp_dir
         )
+
+        if args.ocr == "unlimited":
+            input_md = os.path.join(temp_dir, "input.md")
+            if os.path.exists(input_md):
+                print("Skipping Unlimited-OCR - input.md already exists")
+            else:
+                _run_unlimited_ocr(input_file, temp_dir, input_md, pages=args.ocr_pages)
+
+            with open(input_md, 'r', encoding='utf-8') as f:
+                metadata = markdown_metadata(f.read())
+            if not metadata.get("title"):
+                metadata["title"] = os.path.splitext(os.path.basename(input_file))[0].strip()
+
+            chunk_count = _do_split_and_manifest(
+                temp_dir, input_md, args.chunk_size, split_on_headings=not args.no_heading_split
+            )
+            if chunk_count == 0:
+                sys.exit(1)
+
+            create_config_file(temp_dir, input_file, args.ilang, args.olang, metadata,
+                               conversion_method="unlimited-ocr")
+            _write_source_fingerprint(temp_dir, current_fingerprint)
+            print("Conversion completed successfully!")
+            print(f"Temp directory: {temp_dir}")
+            print(f"Markdown chunks: {chunk_count} files")
+            return
+
+        if file_ext == '.pdf' and is_scanned_pdf(input_file):
+            print(
+                f"WARNING: {os.path.basename(input_file)} appears to be a scanned/image-only PDF. "
+                "Calibre HTMLZ drops hidden OCR text layers. Consider re-running with `--ocr unlimited`."
+            )
 
         if is_markdown:
             input_md = os.path.join(temp_dir, "input.md")

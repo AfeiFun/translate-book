@@ -567,12 +567,17 @@ lines) before recording and building:
 python3 {baseDir}/scripts/smartquote.py "<temp_dir>" --apply
 ```
 
-**Scanned PDFs with a hidden OCR layer.** Calibre's HTMLZ path keeps the
-full-page scan images and throws the hidden text layer away — a 450-page book
-comes out as ~2,800 characters of text. Check with `pdftotext <file.pdf> - |
-wc -c` before trusting Calibre. If the text is there in `pdftotext` but not in
-the Calibre output, extract the layer yourself and feed Markdown to
-`convert.py`:
+**Scanned PDFs (with or without a hidden OCR layer).** Calibre's HTMLZ path
+keeps the full-page scan images and drops the hidden text layer (450 pages come
+out as ~2,800 chars). When `mlx-vlm` and a local `unlimited-ocr` model are
+available, let `convert.py` run local VLM OCR directly (with per-page
+checkpointing, table extraction, and figure cropping):
+
+```bash
+python3 {baseDir}/scripts/convert.py "<file.pdf>" --olang zh --ocr unlimited
+```
+
+Otherwise extract with `pdftohtml -hidden -i -xml` and feed cleaned Markdown:
 
 ```bash
 pdftohtml -hidden -i -xml "<file.pdf>" /tmp/book.xml   # layout + font styles
